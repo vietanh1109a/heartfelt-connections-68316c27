@@ -32,16 +32,22 @@ export function CookieReportsTab() {
   const [checkingLive, setCheckingLive] = useState(false);
   const [liveResults, setLiveResults] = useState<Record<string, boolean>>({});
 
-  const { data: reportsData, isLoading } = useQuery({
+  const { data: reportsData, isLoading, error: queryError } = useQuery({
     queryKey: ["cookie-reports", page],
     queryFn: async () => {
+      console.log("[CookieReportsTab] Fetching reports, page:", page);
       // Fetch reports (no join — cookie_reports has no FK to profiles)
       const { data: rawReports, error, count } = await supabase
         .from("cookie_reports")
         .select("*", { count: "exact" })
         .order("created_at", { ascending: false })
         .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
-      if (error) throw error;
+      
+      console.log("[CookieReportsTab] Reports result:", { rawReports, error, count });
+      if (error) {
+        console.error("[CookieReportsTab] Query error:", error);
+        throw error;
+      }
 
       const reports = rawReports ?? [];
 
@@ -49,10 +55,11 @@ export function CookieReportsTab() {
       const userIds = [...new Set(reports.map((r: any) => r.user_id))];
       let profilesMap: Record<string, any> = {};
       if (userIds.length > 0) {
-        const { data: profiles } = await supabase
+        const { data: profiles, error: profilesError } = await supabase
           .from("profiles")
           .select("user_id, display_name, vip_expires_at")
           .in("user_id", userIds);
+        console.log("[CookieReportsTab] Profiles result:", { profiles, profilesError });
         (profiles ?? []).forEach((p: any) => { profilesMap[p.user_id] = p; });
       }
 
@@ -64,11 +71,17 @@ export function CookieReportsTab() {
 
       return { reports: enrichedReports, total: count ?? 0 };
     },
+    retry: 1,
   });
 
   const reports = reportsData?.reports ?? [];
   const totalPages = Math.ceil((reportsData?.total ?? 0) / PAGE_SIZE);
   const pendingCount = reports.filter((r: any) => r.status === "pending").length;
+
+  // Log query error if any
+  if (queryError) {
+    console.error("[CookieReportsTab] Query failed:", queryError);
+  }
 
   // Check if a reported cookie is live via extension
   const handleCheckLive = async (cookieId: string) => {
