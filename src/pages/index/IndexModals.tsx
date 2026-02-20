@@ -504,7 +504,7 @@ export const ReportCookieDialog = memo(({
               <h3 className="text-lg font-bold text-foreground mb-1">Báo cáo đã được ghi nhận!</h3>
               <p className="text-sm text-muted-foreground">Hệ thống đã tự động cấp tài khoản mới. Admin sẽ kiểm tra sớm.</p>
             </div>
-            <p className="text-xs text-muted-foreground">Còn lại <span className="text-primary font-bold">{Math.max(0, switchesLeft - 1)}/{maxSwitches === Infinity ? "∞" : maxSwitches}</span> lượt đổi tháng này</p>
+            <p className="text-xs text-muted-foreground">Còn lại <span className="text-primary font-bold">{switchesLeft}/{maxSwitches === Infinity ? "∞" : maxSwitches}</span> lượt đổi tháng này</p>
             <Button className="w-full" onClick={() => { onClose(); setReportSuccess(false); }}>Đóng</Button>
           </div>
         ) : (
