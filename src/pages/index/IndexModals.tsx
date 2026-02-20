@@ -504,7 +504,7 @@ export const ReportCookieDialog = memo(({
               <h3 className="text-lg font-bold text-foreground mb-1">Báo cáo đã được ghi nhận!</h3>
               <p className="text-sm text-muted-foreground">Hệ thống đã tự động cấp tài khoản mới. Admin sẽ kiểm tra sớm.</p>
             </div>
-            <p className="text-xs text-muted-foreground">Còn lại <span className="text-primary font-bold">{Math.max(0, switchesLeft - 1)}/{maxSwitches}</span> lượt đổi tháng này</p>
+            <p className="text-xs text-muted-foreground">Còn lại <span className="text-primary font-bold">{Math.max(0, switchesLeft - 1)}/{maxSwitches === Infinity ? "∞" : maxSwitches}</span> lượt đổi tháng này</p>
             <Button className="w-full" onClick={() => { onClose(); setReportSuccess(false); }}>Đóng</Button>
           </div>
         ) : (
@@ -518,7 +518,7 @@ export const ReportCookieDialog = memo(({
               <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/5 p-3 space-y-1.5 text-xs">
                 <p className="font-semibold text-yellow-400">Thông tin quan trọng:</p>
                 <p className="text-muted-foreground">• Hệ thống sẽ <span className="text-foreground font-medium">tự động cấp tài khoản mới</span> ngay sau khi xác nhận.</p>
-                <p className="text-muted-foreground">• Lượt đổi còn lại: <span className="text-yellow-400 font-bold">{switchesLeft}/{maxSwitches}</span></p>
+                <p className="text-muted-foreground">• Lượt đổi còn lại: <span className="text-yellow-400 font-bold">{switchesLeft}/{maxSwitches === Infinity ? "∞" : maxSwitches}</span></p>
               </div>
               <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2.5 flex items-start gap-2">
                 <AlertTriangle className="h-4 w-4 text-destructive flex-shrink-0 mt-0.5" />

@@ -53,8 +53,8 @@ Deno.serve(async (req) => {
           id: first.id,
           cookie_id: first.cookie_id,
           slot: first.slot,
-          is_active: first.cookie_stock?.is_active,
-          cookie_data: first.cookie_stock?.cookie_data,
+          is_active: (first as any).cookie_stock?.is_active,
+          cookie_data: (first as any).cookie_stock?.cookie_data,
         }],
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
