@@ -166,7 +166,10 @@ const TransactionHistory = () => {
                             tx.type === "deposit" ? "text-green-500" : "text-orange-500"
                           }`}
                         >
-                          {tx.type === "deposit" ? "+" : "-"}{tx.amount.toLocaleString("vi-VN")}đ
+                          {tx.amount === 0
+                            ? "🎁 Lượt xem"
+                            : `${tx.type === "deposit" ? "+" : "-"}${tx.amount.toLocaleString("vi-VN")}đ`
+                          }
                         </span>
                       </div>
 
@@ -273,7 +276,7 @@ const TransactionHistory = () => {
                               </span>
                             </p>
                             <p className="text-xs text-muted-foreground">
-                              Đã trả: <span className="text-foreground font-semibold">${vip.amount_paid}</span>
+                              Đã trả: <span className="text-foreground font-semibold">{vip.amount_paid.toLocaleString("vi-VN")}đ</span>
                               {plan?.duration_days && <span className="text-muted-foreground"> / {Math.round(plan.duration_days / 30)} tháng</span>}
                             </p>
                           </div>
@@ -330,7 +333,7 @@ const TransactionHistory = () => {
                         <div>
                           <p className="text-foreground font-semibold text-sm">{plan?.name ?? "Gói Netflix"}</p>
                           <p className="text-xs text-muted-foreground mt-0.5">
-                            {format(new Date(p.created_at), "dd/MM/yyyy HH:mm", { locale: vi })} — ${p.amount_paid}
+                            {format(new Date(p.created_at), "dd/MM/yyyy HH:mm", { locale: vi })} — {p.amount_paid.toLocaleString("vi-VN")}đ
                           </p>
                         </div>
                         <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${isAssigned ? "bg-green-500/20 text-green-400" : "bg-yellow-500/20 text-yellow-400"}`}>

@@ -83,6 +83,7 @@ const Auth = () => {
       const { data: signUpData, error } = await supabase.auth.signUp({
         email,
         password,
+        options: { emailRedirectTo: window.location.origin },
       });
       if (error) {
         if (error.message.toLowerCase().includes("already registered") || error.message.toLowerCase().includes("already been registered")) {
@@ -158,9 +159,9 @@ const Auth = () => {
       toast.error(data?.error || "Mã xác thực không đúng. Vui lòng thử lại.");
     } else {
       if (data.referralBonus) {
-        toast.success("🎉 Xác thực thành công! Bạn và người giới thiệu mỗi người nhận +$5 bonus!", { duration: 5000 });
+        toast.success("🎉 Xác thực thành công! Bạn nhận 15 lượt xem miễn phí (10 bonus + 5 giới thiệu). Người mời cũng nhận +5 lượt!", { duration: 6000 });
       } else {
-        toast.success("🎉 Xác thực thành công! Bạn nhận được $10 miễn phí!");
+        toast.success("🎉 Xác thực thành công! Bạn nhận được 10 lượt xem miễn phí (hạn 7 ngày)!");
       }
       navigate("/");
     }
@@ -364,8 +365,8 @@ const Auth = () => {
                       <div className="relative">
                         <Gift className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                         <Input
-                          type="text"
-                          placeholder="Mã giới thiệu (không bắt buộc)"
+                          type="email"
+                          placeholder="Email người giới thiệu (không bắt buộc)"
                           value={referralCode}
                           onChange={(e) => setReferralCode(e.target.value)}
                           className="pl-10 bg-secondary border-border text-foreground placeholder:text-muted-foreground"

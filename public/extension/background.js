@@ -189,9 +189,117 @@ async function runWithTimeout(fn, ms, msg) {
 }
 
 // ============ Parse Netscape cookie string ============
+// Supports formats:
+//   1. Netscape tab-separated (classic)
+//   2. Multi-line "Name=value\nName2=value2" (new Netflix format)
+//   3. Single-line "Name=value" for known Netflix cookies
+const knownNetflixCookies = ["NetflixId", "SecureNetflixId", "nfvdid", "memclid", "profilesNewSession", "nfvdie", "lhpuuidh"];
+
+function makeNetflixCookie(name, value) {
+  return {
+    name,
+    value,
+    domain: ".netflix.com",
+    path: "/",
+    secure: true,
+    httpOnly: false,
+    sameSite: "no_restriction",
+    expirationDate: Math.floor(Date.now() / 1000) + 30 * 86400,
+  };
+}
+
 function parseCookieString(cookieString) {
   const cookies = [];
-  const lines = cookieString.split("\n").map(s => s.trim()).filter(Boolean);
+  if (!cookieString) return cookies;
+
+  const trimmed = cookieString.trim();
+  console.log("[BG] parseCookieString input length:", trimmed.length, "| preview:", trimmed.slice(0, 80));
+
+  // ── Format 0: JSON array [{name, value, domain, ...}] ──
+  if (trimmed.startsWith("[")) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (Array.isArray(parsed)) {
+        for (const c of parsed) {
+          if (c.name && c.value) {
+            cookies.push({
+              name: c.name, value: c.value,
+              domain: c.domain || ".netflix.com",
+              path: c.path || "/",
+              secure: c.secure !== undefined ? c.secure : true,
+              httpOnly: c.httpOnly || false,
+              sameSite: c.sameSite || "no_restriction",
+              expirationDate: c.expirationDate || (Math.floor(Date.now() / 1000) + 30 * 86400),
+            });
+          }
+        }
+        if (cookies.length > 0) {
+          console.log("[BG] parseCookieString: JSON array format,", cookies.length, "cookies");
+          return cookies;
+        }
+      }
+    } catch (e) {
+      console.log("[BG] parseCookieString: JSON parse failed:", e.message);
+    }
+  }
+
+  // ── Normalize: remove \r, split by newline ──
+  const lines = trimmed.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n").map(s => s.trim()).filter(Boolean);
+  const hasTabLine = lines.some(l => l.split("\t").length >= 7);
+
+  // ── Format 2 & 3: Multi-line or single-line "Name=value" for known Netflix cookies ──
+  if (!hasTabLine) {
+    const newFormatCookies = [];
+    for (const line of lines) {
+      if (line.startsWith("#") || line.startsWith("//")) continue;
+      const eqIdx = line.indexOf("=");
+      if (eqIdx === -1) continue;
+      const name = line.substring(0, eqIdx).trim();
+      const value = line.substring(eqIdx + 1).trim();
+      if (name && value && knownNetflixCookies.includes(name)) {
+        newFormatCookies.push(makeNetflixCookie(name, value));
+        console.log("[BG] parseCookieString: new format cookie:", name, "| value length:", value.length);
+      } else if (name && !knownNetflixCookies.includes(name)) {
+        console.log("[BG] parseCookieString: unknown name skipped:", name);
+      }
+    }
+    if (newFormatCookies.length > 0) {
+      console.log("[BG] parseCookieString: detected new Netflix format,", newFormatCookies.length, "cookies");
+      return newFormatCookies;
+    }
+
+    // ── Format 4: Single-line "key=value; key2=value2" (inline semicolon-separated) ──
+    if (lines.length === 1) {
+      const inlineLine = lines[0];
+      // Check if it looks like semicolon-separated cookies
+      if (inlineLine.includes(";")) {
+        const parts = inlineLine.split(";").map(s => s.trim()).filter(Boolean);
+        for (const part of parts) {
+          const eqIndex = part.indexOf("=");
+          if (eqIndex === -1) continue;
+          const name = part.substring(0, eqIndex).trim();
+          const value = part.substring(eqIndex + 1).trim();
+          const skipNames = ["path", "domain", "expires", "max-age", "secure", "httponly", "samesite"];
+          if (skipNames.includes(name.toLowerCase())) continue;
+          if (name && value && knownNetflixCookies.includes(name)) {
+            cookies.push(makeNetflixCookie(name, value));
+            console.log("[BG] parseCookieString: inline cookie:", name);
+          }
+        }
+        if (cookies.length > 0) {
+          console.log("[BG] parseCookieString: inline format,", cookies.length, "cookies");
+          return cookies;
+        }
+      }
+
+      // ── Format 5: The entire single line IS a cookie value (e.g. raw NetflixId string without name) ──
+      // This handles edge case where admin stores raw cookie value without name prefix
+      // Skip this — we can't know the name, just log and return empty
+      console.log("[BG] parseCookieString: single line but no known cookie name found. Raw:", inlineLine.slice(0, 80));
+    }
+  }
+
+  // ── Format 1: Netscape tab-separated ──
   for (const line of lines) {
     if (line.startsWith("#") || line.startsWith("//")) continue;
     const tabs = line.split("\t");
@@ -204,9 +312,11 @@ function parseCookieString(cookieString) {
       const value = tabs[6].trim();
       if (name && value) {
         cookies.push({ domain, path, secure: isSecure, expirationDate: expiry > 0 ? expiry : undefined, name, value, httpOnly: false });
+        console.log("[BG] parseCookieString: Netscape cookie:", name);
       }
       continue;
     }
+    // Inline "Name=val; Name2=val2" multi-line fallback
     const parts = line.split(/;/).map(s => s.trim()).filter(Boolean);
     for (const part of parts) {
       const eqIndex = part.indexOf("=");
@@ -215,9 +325,14 @@ function parseCookieString(cookieString) {
       const value = part.substring(eqIndex + 1).trim();
       const skipNames = ["path", "domain", "expires", "max-age", "secure", "httponly", "samesite"];
       if (skipNames.includes(name.toLowerCase())) continue;
-      if (name && value) cookies.push({ name, value });
+      if (name && value) {
+        cookies.push({ name, value });
+        console.log("[BG] parseCookieString: inline fallback cookie:", name);
+      }
     }
   }
+
+  console.log("[BG] parseCookieString: total parsed:", cookies.length);
   return cookies;
 }
 
@@ -410,6 +525,17 @@ async function activateTv(code, cookieStrings) {
 
 // ============ Message Listener ============
 function handleMessage(message, sender, sendResponse) {
+  // Register web app tab for auto-logout tracking
+  if (message.type === "REGISTER_WEB_TAB") {
+    const tabId = sender.tab?.id;
+    if (tabId) {
+      webAppTabs.add(tabId);
+      console.log("[BG] Registered web app tab:", tabId, "| total:", webAppTabs.size);
+    }
+    sendResponse({ success: true });
+    return false;
+  }
+
   // TV Activation
   if (message.type === "ACTIVATE_TV") {
     activateTv(message.code, message.cookies || [])
@@ -423,11 +549,23 @@ function handleMessage(message, sender, sendResponse) {
     (async () => {
       try {
         const cookies = parseCookieString(message.payload);
-        await step3();
-        await step4(cookies);
-        await step1();
-        await step2();
-        await step5();
+        console.log("[BG] SET_NETFLIX_COOKIE: parsed", cookies.length, "cookies:", cookies.map(c => c.name));
+        if (cookies.length === 0) {
+          sendResponse({ success: false, error: "Không parse được cookie" });
+          return;
+        }
+        await step3();                   // 1. Xóa cookies cũ
+        const r4 = await step4(cookies); // 2. Import cookies mới
+        console.log("[BG] step4 result:", r4);
+        if (!r4.success) {
+          sendResponse({ success: false, error: "Import cookie thất bại: " + r4.detail });
+          return;
+        }
+        await step1();                   // 3. Tìm/mở tab Netflix
+        await step2();                   // 4. Đợi tab load xong
+        await step5();                   // 5. Reload tab (để Netflix nhận cookie mới)
+        // 6. Đợi thêm 2s để Netflix settle sau reload
+        await new Promise(resolve => setTimeout(resolve, 2000));
         sendResponse({ success: true });
       } catch (e) {
         sendResponse({ success: false, error: e.message });
@@ -455,6 +593,56 @@ function handleMessage(message, sender, sendResponse) {
 
 chrome.runtime.onMessage.addListener(handleMessage);
 chrome.runtime.onMessageExternal.addListener(handleMessage);
+
+// ============ Auto-logout: clear Netflix cookies when the web tab is closed ============
+// Tracks which tabs are our web app tabs — registered dynamically via messages from content script
+const webAppTabs = new Set();
+
+chrome.tabs.onRemoved.addListener(async (tabId) => {
+  if (!webAppTabs.has(tabId)) return;
+  webAppTabs.delete(tabId);
+
+  // Only clear Netflix cookies if no other web app tabs are still open
+  if (webAppTabs.size > 0) {
+    console.log("[BG] Web app tab closed, but other tabs still open — skip logout");
+    return;
+  }
+
+  console.log("[BG] Last web app tab closed — clearing Netflix cookies (auto-logout)");
+  try {
+    await step3();
+    // Also reload any open Netflix tabs to force logout visually
+    const netflixTabs = await chrome.tabs.query({ url: "*://*.netflix.com/*" });
+    for (const t of netflixTabs) {
+      chrome.tabs.reload(t.id).catch(() => {});
+    }
+    console.log("[BG] Auto-logout: Netflix cookies cleared ✓");
+  } catch (e) {
+    console.log("[BG] Auto-logout error:", e.message);
+  }
+});
+
+// ============ Auto Cleanup Check — every 10s ============
+// If Netflix is open but NO web app tab is registered → clear cookies & reload
+setInterval(async () => {
+  if (webAppTabs.size > 0) return; // web app is open, all good
+
+  try {
+    const netflixTabs = await chrome.tabs.query({ url: "*://*.netflix.com/*" });
+    if (netflixTabs.length === 0) return; // no Netflix tabs either, nothing to do
+
+    console.log("[BG] AutoCleanup: Netflix open but no web app tab! Clearing cookies...");
+    await step3(); // clear all Netflix cookies
+
+    // Reload Netflix tabs to force logout
+    for (const t of netflixTabs) {
+      chrome.tabs.reload(t.id).catch(() => {});
+    }
+    console.log("[BG] AutoCleanup: cookies cleared, Netflix tabs reloaded ✓");
+  } catch (e) {
+    console.log("[BG] AutoCleanup error:", e.message);
+  }
+}, 10000);
 
 // ============ Port-based Check Live (reuses single tab for speed) ============
 chrome.runtime.onConnect.addListener((port) => {

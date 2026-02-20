@@ -52,8 +52,17 @@ const Index = () => {
 
   const handleWatch = async () => {
     if (!user) { navigate("/auth"); return; }
+    if (!profile) return;
+
+    const freeViews = (profile as any).free_views_left ?? 0;
+    const vipViews = (profile as any).vip_views_left ?? 0;
+    const hasViews = freeViews > 0 || vipViews > 0;
     const effectiveBalance = (profile?.balance ?? 0) + (profile?.bonus_balance ?? 0);
-    if (!profile || effectiveBalance < 500) return;
+
+    if (!hasViews && effectiveBalance < 500) {
+      toast.error("Hết lượt xem và số dư không đủ. Cần ít nhất 500đ hoặc mua thêm lượt xem.");
+      return;
+    }
     if (extensionOutdated) {
       toast.error(`Extension phiên bản ${extensionVersion} đã cũ. Vui lòng cập nhật lên v${MIN_EXTENSION_VERSION}+`);
       setShowExtensionModal(true);
@@ -73,20 +82,37 @@ const Index = () => {
         return;
       }
 
-      const { data: assignments } = await supabase
-        .from("user_cookie_assignment")
-        .select("cookie_id, slot, cookie_stock!inner(cookie_data, is_active)")
-        .eq("user_id", user.id)
-        .order("slot", { ascending: true });
-
-      const activeCookies = (assignments ?? [])
-        .filter((a: { cookie_stock: { is_active: boolean; cookie_data: string } | null }) => a.cookie_stock?.is_active)
-        .map((a: { cookie_stock: { cookie_data: string } | null }) => ({ cookie_data: a.cookie_stock!.cookie_data }));
-
-      if (activeCookies.length === 0) {
-        toast.error("Hiện tại không có cookie khả dụng được gán cho bạn. Vui lòng liên hệ hỗ trợ.");
+      // Fetch cookies via edge function (bypasses RLS on cookie_stock)
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData?.session?.access_token;
+      const supabaseUrl = "https://ckamflsosjzkyukajxzu.supabase.co";
+      const anonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNrYW1mbHNvc2p6a3l1a2FqeHp1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0NzMyOTYsImV4cCI6MjA4NzA0OTI5Nn0.G32dB8s_G2xAWohnqegON4cfQT2tswgM9RGFt5tmud0";
+      
+      const res = await fetch(`${supabaseUrl}/functions/v1/assign-cookie`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${accessToken}`,
+          "apikey": anonKey,
+        },
+        body: JSON.stringify({}),
+      });
+      const assignResult = await res.json();
+      
+      if (!res.ok || assignResult.error) {
+        toast.error(assignResult.error || "Không thể lấy tài khoản. Vui lòng liên hệ hỗ trợ.");
         return;
       }
+      
+      const activeCookies = (assignResult.assignments || [])
+        .filter((a: any) => a.is_active && a.cookie_data)
+        .map((a: any) => ({ cookie_data: a.cookie_data }));
+      
+      if (activeCookies.length === 0) {
+        toast.error("Kho tài khoản đã hết. Vui lòng liên hệ hỗ trợ.");
+        return;
+      }
+      queryClient.invalidateQueries({ queryKey: ["cookie-assignments"] });
 
       let extensionResponded = false;
       for (const cookie of activeCookies) {
@@ -100,14 +126,31 @@ const Index = () => {
         return;
       }
 
-      const { data: deductData, error: deductError } = await supabase.functions.invoke("deduct-balance", {
-        body: { amount: 500, memo: "Xem phim Netflix" },
-      });
-      if (deductError || deductData?.error) {
-        toast.error(deductData?.error || "Lỗi khi trừ tiền. Vui lòng thử lại.");
-        return;
+      // Deduct: views first → then balance
+      if (hasViews) {
+        const useVip = vipViews > 0;
+        const updateField = useVip ? "vip_views_left" : "free_views_left";
+        const currentVal = useVip ? vipViews : freeViews;
+        const { error: viewErr } = await supabase
+          .from("profiles")
+          .update({ [updateField]: currentVal - 1 })
+          .eq("user_id", user.id);
+        if (viewErr) {
+          toast.error("Lỗi trừ lượt xem. Vui lòng thử lại.");
+          return;
+        }
+        const viewType = useVip ? "VIP" : "miễn phí";
+        toast.success(`✅ Netflix đã được mở! Trừ 1 lượt xem ${viewType}. Còn lại: ${currentVal - 1} lượt.`);
+      } else {
+        const { data: deductData, error: deductError } = await supabase.functions.invoke("deduct-balance", {
+          body: { amount: 500, memo: "Xem phim Netflix" },
+        });
+        if (deductError || deductData?.error) {
+          toast.error(deductData?.error || "Lỗi khi trừ tiền. Vui lòng thử lại.");
+          return;
+        }
+        toast.success("✅ Netflix đã được mở! Trừ 500đ. Chúc bạn xem phim vui vẻ!");
       }
-      toast.success("✅ Netflix đã được mở! Trừ 500đ. Chúc bạn xem phim vui vẻ!");
       queryClient.invalidateQueries({ queryKey: ["profile"] });
     } finally {
       setWatchLoading(false);
@@ -118,18 +161,38 @@ const Index = () => {
     if (!user) { navigate("/auth"); return; }
     if (tvCode.length !== 8) { toast.error("Vui lòng nhập đủ 8 số từ TV"); return; }
     if (!extensionVersion) { toast.error("Cần cài Extension để dùng tính năng này"); return; }
-    if (!profile || (profile.balance + (profile.bonus_balance ?? 0)) < 500) { toast.error("Số dư không đủ (500đ)"); return; }
+
+    const freeViews = (profile as any)?.free_views_left ?? 0;
+    const vipViews = (profile as any)?.vip_views_left ?? 0;
+    const hasEnoughViews = freeViews >= 5 || vipViews >= 5;
+    const effectiveBalance = (profile?.balance ?? 0) + (profile?.bonus_balance ?? 0);
+
+    if (!hasEnoughViews && effectiveBalance < 2500) {
+      toast.error("Không đủ lượt xem (cần 5 lượt) hoặc số dư (cần 2.500đ) để kích hoạt TV.");
+      return;
+    }
     setTvLoading(true);
     try {
-      const { data: assignments } = await supabase
-        .from("user_cookie_assignment")
-        .select("cookie_id, slot, cookie_stock!inner(cookie_data, is_active)")
-        .eq("user_id", user!.id)
-        .order("slot", { ascending: true });
-
-      const activeCookies = (assignments ?? [])
-        .filter((a: { cookie_stock: { is_active: boolean; cookie_data: string } | null }) => a.cookie_stock?.is_active)
-        .map((a: { cookie_stock: { cookie_data: string } | null }) => a.cookie_stock!.cookie_data);
+      // Fetch cookies via edge function (bypasses RLS)
+      const { data: tvSession } = await supabase.auth.getSession();
+      const tvToken = tvSession?.session?.access_token;
+      const tvRes = await fetch("https://ckamflsosjzkyukajxzu.supabase.co/functions/v1/assign-cookie", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${tvToken}`,
+          "apikey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNrYW1mbHNvc2p6a3l1a2FqeHp1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0NzMyOTYsImV4cCI6MjA4NzA0OTI5Nn0.G32dB8s_G2xAWohnqegON4cfQT2tswgM9RGFt5tmud0",
+        },
+        body: JSON.stringify({}),
+      });
+      const tvAssign = await tvRes.json();
+      if (!tvRes.ok || tvAssign.error) {
+        toast.error(tvAssign.error || "Không thể lấy tài khoản.");
+        return;
+      }
+      const activeCookies = (tvAssign.assignments || [])
+        .filter((a: any) => a.is_active && a.cookie_data)
+        .map((a: any) => a.cookie_data);
 
       window.postMessage({ type: "ACTIVATE_TV", code: tvCode, cookies: activeCookies }, "*");
 
@@ -149,14 +212,33 @@ const Index = () => {
       });
 
       if (result.success) {
-        const { data: deductData, error: deductError } = await supabase.functions.invoke("deduct-balance", {
-          body: { amount: 500, memo: "📺 Kích hoạt Netflix TV" },
-        });
-        if (deductError || deductData?.error) {
-          toast.error(deductData?.error || "Kích hoạt thành công nhưng lỗi khi trừ tiền.");
+        // Deduct: 5 views first (vip → free), then 2500đ
+        if (hasEnoughViews) {
+          const useVip = vipViews >= 5;
+          const updateField = useVip ? "vip_views_left" : "free_views_left";
+          const currentVal = useVip ? vipViews : freeViews;
+          const { error: viewErr } = await supabase
+            .from("profiles")
+            .update({ [updateField]: currentVal - 5 })
+            .eq("user_id", user.id);
+          if (viewErr) {
+            toast.error("Kích hoạt thành công nhưng lỗi khi trừ lượt xem.");
+          } else {
+            const viewType = useVip ? "VIP" : "miễn phí";
+            const remaining = currentVal - 5;
+            queryClient.invalidateQueries({ queryKey: ["profile"] });
+            toast.success(`🎉 Kích hoạt TV thành công! Trừ 5 lượt xem ${viewType}. Còn lại: ${remaining} lượt.`);
+          }
         } else {
-          queryClient.invalidateQueries({ queryKey: ["profile"] });
-          toast.success("🎉 Kích hoạt TV thành công! Trừ 500đ.");
+          const { data: deductData, error: deductError } = await supabase.functions.invoke("deduct-balance", {
+            body: { amount: 2500, memo: "📺 Kích hoạt Netflix TV" },
+          });
+          if (deductError || deductData?.error) {
+            toast.error(deductData?.error || "Kích hoạt thành công nhưng lỗi khi trừ tiền.");
+          } else {
+            queryClient.invalidateQueries({ queryKey: ["profile"] });
+            toast.success("🎉 Kích hoạt TV thành công! Trừ 2.500đ.");
+          }
         }
         setTvCode("");
       } else {
@@ -251,7 +333,8 @@ const Index = () => {
                 maxSwitches={maxSwitches}
                 switchesLeft={switchesLeft}
                 activeCookieCount={activeCookieCount}
-                freeViews={Math.floor((profile?.bonus_balance ?? 0) / 500)}
+                freeViews={(profile as any)?.free_views_left ?? 0}
+                vipViews={(profile as any)?.vip_views_left ?? 0}
                 onShowInfo={() => setShowInfoModal(true)}
                 onShowVipPlans={() => setShowVipPlans(true)}
                 onShowReportDialog={() => setShowReportDialog(true)}
@@ -331,9 +414,9 @@ const Index = () => {
                 </div>
                 <div className="mb-6 mt-4 space-y-3 flex-1">
                   {[
-                    "Hệ thống tự động cấp riêng cho bạn 2 hồ sơ đăng nhập Netflix cố định ngay khi tạo tài khoản.",
-                    "Chỉ tốn 500đ cho mỗi lần kích hoạt Extension để xem phim.",
-                    "1 lượt đổi tài khoản mỗi tháng.",
+                    "Hệ thống tự động cấp riêng cho bạn 1 tài khoản Netflix cố định ngay khi tạo tài khoản.",
+                    "Ưu tiên trừ lượt xem miễn phí, hết lượt mới trừ 500đ/lượt.",
+                    "2 lượt đổi tài khoản mỗi tháng.",
                     "Xem kèm quảng cáo: Cần xem một đoạn quảng cáo ngắn để hỗ trợ duy trì máy chủ trước mỗi phiên.",
                   ].map((f) => (
                     <div key={f} className="flex items-start gap-2 text-sm text-muted-foreground">
@@ -342,19 +425,30 @@ const Index = () => {
                     </div>
                   ))}
                 </div>
-                <button
-                  onClick={() => { setShowWatchModal(false); handleWatch(); }}
-                  disabled={watchLoading || ((profile?.balance ?? 0) + (profile?.bonus_balance ?? 0)) < 500}
-                  className="w-full rounded-xl py-3 font-bold text-sm text-white transition-all hover:opacity-90 active:scale-[0.97] disabled:opacity-50"
-                  style={{ background: "linear-gradient(135deg, #E50914, #B20710)" }}
-                >
-                  {((profile?.balance ?? 0) + (profile?.bonus_balance ?? 0)) < 500 ? "Số dư không đủ (500đ)" : "Bắt đầu xem — 500đ"}
-                </button>
-                {((profile?.balance ?? 0) + (profile?.bonus_balance ?? 0)) < 500 && (
-                  <button onClick={() => { setShowWatchModal(false); setShowDeposit(true); }} className="mt-2 w-full text-xs text-primary hover:underline">
-                    Nạp thêm
-                  </button>
-                )}
+                {(() => {
+                  const freeV = (profile as any)?.free_views_left ?? 0;
+                  const vipV = (profile as any)?.vip_views_left ?? 0;
+                  const hasV = freeV > 0 || vipV > 0;
+                  const bal = (profile?.balance ?? 0) + (profile?.bonus_balance ?? 0);
+                  const canWatch = hasV || bal >= 500;
+                  return (
+                    <>
+                      <button
+                        onClick={() => { setShowWatchModal(false); handleWatch(); }}
+                        disabled={watchLoading || !canWatch}
+                        className="w-full rounded-xl py-3 font-bold text-sm text-white transition-all hover:opacity-90 active:scale-[0.97] disabled:opacity-50"
+                        style={{ background: "linear-gradient(135deg, #E50914, #B20710)" }}
+                      >
+                        {hasV ? `Bắt đầu xem (còn ${freeV + vipV} lượt)` : bal >= 500 ? "Bắt đầu xem — 500đ" : "Hết lượt xem & số dư không đủ"}
+                      </button>
+                      {!canWatch && (
+                        <button onClick={() => { setShowWatchModal(false); setShowDeposit(true); }} className="mt-2 w-full text-xs text-primary hover:underline">
+                          Nạp thêm
+                        </button>
+                      )}
+                    </>
+                  );
+                })()}
               </div>
 
               {/* VIP */}
@@ -384,9 +478,9 @@ const Index = () => {
                 )}
                 <div className="mb-6 space-y-3 flex-1">
                   {[
-                    "Sở hữu danh sách riêng lên tới 5 tài khoản Premium chất lượng cao nhất.",
+                    "Sở hữu 1 tài khoản Premium chất lượng cao nhất.",
                     "Ưu tiên đường truyền: Tốc độ cực nhanh, không phải chờ đợi dù trong giờ cao điểm.",
-                    "Hỗ trợ 2 lượt đổi tài khoản mỗi tháng.",
+                    "Hỗ trợ 10 lượt đổi tài khoản mỗi tháng.",
                     "Trải nghiệm không gián đoạn: Hoàn toàn sạch bóng quảng cáo.",
                   ].map((f) => (
                     <div key={f} className="flex items-start gap-2 text-sm text-muted-foreground">
@@ -396,13 +490,22 @@ const Index = () => {
                   ))}
                 </div>
                 {isVip ? (
-                  <button
-                    onClick={() => { setShowWatchModal(false); handleWatch(); }}
-                    disabled={watchLoading || ((profile?.balance ?? 0) + (profile?.bonus_balance ?? 0)) < 500}
-                    className="w-full rounded-xl py-3 font-bold text-sm text-black transition-all hover:opacity-90 active:scale-[0.97] disabled:opacity-50 bg-yellow-400 hover:bg-yellow-300"
-                  >
-                    {((profile?.balance ?? 0) + (profile?.bonus_balance ?? 0)) < 500 ? "Số dư không đủ (500đ)" : "Xem ngay — VIP 👑"}
-                  </button>
+                  (() => {
+                    const freeV = (profile as any)?.free_views_left ?? 0;
+                    const vipV = (profile as any)?.vip_views_left ?? 0;
+                    const hasV = freeV > 0 || vipV > 0;
+                    const bal = (profile?.balance ?? 0) + (profile?.bonus_balance ?? 0);
+                    const canWatch = hasV || bal >= 500;
+                    return (
+                      <button
+                        onClick={() => { setShowWatchModal(false); handleWatch(); }}
+                        disabled={watchLoading || !canWatch}
+                        className="w-full rounded-xl py-3 font-bold text-sm text-black transition-all hover:opacity-90 active:scale-[0.97] disabled:opacity-50 bg-yellow-400 hover:bg-yellow-300"
+                      >
+                        {hasV ? `Xem ngay — VIP 👑 (còn ${vipV + freeV} lượt)` : bal >= 500 ? "Xem ngay — VIP 👑 (500đ)" : "Hết lượt xem & số dư không đủ"}
+                      </button>
+                    );
+                  })()
                 ) : (
                   <button
                     onClick={() => { setShowWatchModal(false); setShowVipPlans(true); }}

@@ -13,7 +13,6 @@ export function useTransactions() {
         .from("transactions")
         .select("*")
         .eq("user_id", user.id)
-        .gt("amount", 0)  // Hide $0 transactions (e.g. cookie report audit logs)
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data;

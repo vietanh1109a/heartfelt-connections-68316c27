@@ -135,6 +135,15 @@ export const VipPlansModal = memo(({
   const [purchasing, setPurchasing] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
+  const formatVipDuration = (days: number): string => {
+    if (days >= 3650) return "Vĩnh viễn";
+    if (days >= 365 && days % 365 === 0) return `${days / 365} năm`;
+    if (days >= 30 && days % 30 === 0) return `${days / 30} tháng`;
+    return `${days} ngày`;
+  };
+
+  const isLifetime = (days: number) => days >= 3650;
+
   const handlePurchase = async (plan: { id: string; name: string; price: number; duration_days: number }) => {
     if (!profile) return;
     const effectiveBalance = (profile.balance ?? 0) + (profile.bonus_balance ?? 0);
@@ -144,40 +153,97 @@ export const VipPlansModal = memo(({
     }
     setPurchasing(plan.id);
     try {
-      const { data, error } = await supabase.functions.invoke("purchase-vip", {
-        body: { vip_plan_id: plan.id },
-      });
-      if (error) throw error;
-      if (data?.error) { toast.error(data.error); return; }
-      toast.success(`🎉 Đã kích hoạt ${plan.name}! Hạn VIP: ${new Date(data.vip_expires_at).toLocaleDateString("vi-VN")}`, { duration: 5000 });
+      // Use direct fetch to bypass supabase.functions.invoke wrapper (avoids gateway 401 bug with ES256)
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) { toast.error("Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại."); return; }
+
+      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+      const url = `https://${projectId}.supabase.co/functions/v1/purchase-vip-v2`;
+      console.log("[purchase-vip] calling", url);
+
+      let res: Response;
+      try {
+        res = await fetch(url, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${session.access_token}`,
+            "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          },
+          body: JSON.stringify({ vip_plan_id: plan.id }),
+        });
+      } catch (netErr: any) {
+        console.error("[purchase-vip] network error (function not deployed yet?):", netErr.message);
+        toast.error("Function chưa sẵn sàng. Vui lòng thử lại sau vài giây.");
+        return;
+      }
+
+      console.log("[purchase-vip] response status:", res.status);
+      let data: any = {};
+      try { data = await res.json(); } catch {}
+      console.log("[purchase-vip] response data:", data);
+
+      if (!res.ok || data?.error) {
+        toast.error(data?.error || `Lỗi ${res.status}: Vui lòng thử lại.`);
+        return;
+      }
+      const expiryText = plan.duration_days >= 3650 ? "Vĩnh viễn" : new Date(data.vip_expires_at).toLocaleDateString("vi-VN");
+      toast.success(`🎉 Đã kích hoạt ${plan.name}! Hạn VIP: ${expiryText}`, { duration: 5000 });
       onClose();
       queryClient.invalidateQueries({ queryKey: ["profile"] });
-    } catch {
-      toast.error("Lỗi khi mua gói VIP. Vui lòng thử lại.");
+    } catch (e: any) {
+      console.error("[purchase-vip] unexpected error:", e);
+      toast.error("Lỗi không xác định. Vui lòng thử lại.");
     } finally {
       setPurchasing(null);
     }
   };
 
   if (!open) return null;
+
+  // Split plans: regular vs lifetime (exclude 6-month = 180 days)
+  const regularPlans = (vipPlans ?? []).filter(p => !isLifetime(p.duration_days) && p.duration_days !== 180);
+  const lifetimePlan = (vipPlans ?? []).find(p => isLifetime(p.duration_days));
+
+  // Find the "most popular" plan — prefer 3-month (90 days), fallback to middle index
+  const popularIndex = (() => {
+    const threeMonth = regularPlans.findIndex(p => p.duration_days === 90);
+    if (threeMonth !== -1) return threeMonth;
+    return regularPlans.length >= 3
+      ? Math.floor(regularPlans.length / 2)
+      : regularPlans.length === 2 ? 1 : 0;
+  })();
+
+  // Savings calculation: compare vs first plan monthly price
+  const basePricePerDay = regularPlans[0]
+    ? regularPlans[0].price / regularPlans[0].duration_days
+    : 0;
+
+  const getSavings = (plan: { price: number; duration_days: number }) => {
+    if (!basePricePerDay || plan.duration_days <= regularPlans[0]?.duration_days) return 0;
+    const fullPrice = basePricePerDay * plan.duration_days;
+    return Math.round((1 - plan.price / fullPrice) * 100);
+  };
+
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm px-4"
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md px-4 py-6 overflow-y-auto"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <motion.div
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        transition={{ duration: 0.3 }}
-        className="w-full max-w-xl"
+        transition={{ duration: 0.3, ease: "easeOut" }}
+        className="w-full max-w-2xl"
       >
-        <div className="text-center mb-6">
-          <div className="inline-flex items-center gap-2 bg-yellow-500/20 border border-yellow-500/30 rounded-full px-4 py-1.5 mb-3">
+        {/* Header */}
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center gap-2 bg-yellow-500/15 border border-yellow-500/40 rounded-full px-4 py-1.5 mb-4">
             <Crown className="h-4 w-4 text-yellow-400" />
-            <span className="text-yellow-400 font-bold text-sm">Thành viên VIP</span>
+            <span className="text-yellow-400 font-bold text-sm tracking-wide">THÀNH VIÊN VIP</span>
           </div>
-          <h2 className="text-2xl font-bold text-foreground">Nâng cấp tài khoản</h2>
-          <p className="text-muted-foreground text-sm mt-1">Hiển thị badge VIP cùng tên bạn trên hệ thống</p>
+          <h2 className="text-3xl font-bold text-foreground">Nâng cấp tài khoản</h2>
+          <p className="text-muted-foreground text-sm mt-2">Trải nghiệm VIP độc quyền · Hỗ trợ ưu tiên</p>
         </div>
 
         {(!vipPlans || vipPlans.length === 0) ? (
@@ -187,35 +253,143 @@ export const VipPlansModal = memo(({
             <p className="text-muted-foreground text-sm mt-1">Admin chưa thêm gói VIP. Vui lòng liên hệ hỗ trợ.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-3 gap-3">
-            {vipPlans.map((plan, i) => (
+          <>
+            {/* Regular plans grid */}
+            <div className={`grid gap-4 ${regularPlans.length === 1 ? "grid-cols-1 max-w-xs mx-auto" : regularPlans.length === 2 ? "grid-cols-2" : "grid-cols-3"}`}>
+              {regularPlans.map((plan, i) => {
+                const isPopular = i === popularIndex && regularPlans.length > 1;
+                const savings = getSavings(plan);
+                const monthlyPrice = plan.price / (plan.duration_days / 30);
+
+                return (
+                  <motion.div
+                    key={plan.id}
+                    initial={{ opacity: 0, y: 24 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: i * 0.08 }}
+                    className={`relative flex flex-col rounded-2xl border transition-all duration-200 ${
+                      isPopular
+                        ? "border-yellow-400/70 scale-[1.06] shadow-[0_0_40px_rgba(234,179,8,0.2)] z-10"
+                        : "border-yellow-500/20 hover:border-yellow-500/40"
+                    }`}
+                    style={{
+                      background: isPopular
+                        ? "linear-gradient(145deg, rgba(234,179,8,0.12), rgba(15,15,15,0.95))"
+                        : "linear-gradient(145deg, rgba(234,179,8,0.05), rgba(15,15,15,0.9))",
+                    }}
+                  >
+                    {/* Popular badge */}
+                    {isPopular && (
+                      <div className="absolute -top-3.5 left-0 right-0 flex justify-center">
+                        <span className="bg-yellow-400 text-black text-[11px] font-extrabold px-4 py-1 rounded-full tracking-wider shadow-lg">
+                          ⭐ PHỔ BIẾN NHẤT
+                        </span>
+                      </div>
+                    )}
+
+                    <div className={`p-5 flex flex-col flex-1 ${isPopular ? "pt-7" : ""}`}>
+                      {/* Savings badge */}
+                      {savings > 0 && (
+                        <div className="self-start mb-2">
+                          <span className="bg-green-500/20 text-green-400 text-[10px] font-bold px-2.5 py-0.5 rounded-full border border-green-500/30">
+                            Tiết kiệm {savings}%
+                          </span>
+                        </div>
+                      )}
+
+                      <p className="text-muted-foreground text-xs font-medium uppercase tracking-widest mb-1">
+                        {formatVipDuration(plan.duration_days)}
+                      </p>
+                      <h3 className="text-foreground font-bold text-base mb-3">{plan.name}</h3>
+
+                      {/* Price */}
+                      <div className="mb-1">
+                        <span className="text-yellow-400 font-extrabold text-3xl leading-none">
+                          {plan.price.toLocaleString("vi-VN")}đ
+                        </span>
+                      </div>
+                      {plan.duration_days > 30 && (
+                        <p className="text-muted-foreground text-xs mb-4">
+                          ~{Math.round(monthlyPrice).toLocaleString("vi-VN")}đ/tháng
+                        </p>
+                      )}
+
+                      <div className="space-y-1.5 mb-5 flex-1">
+                        {(() => {
+                          const viewsLabel = plan.duration_days === 30 ? "60 lượt xem VIP/tháng" : plan.duration_days === 90 ? "222 lượt xem VIP/3 tháng" : plan.duration_days === 365 ? "500 lượt xem VIP/năm" : "Lượt xem VIP không giới hạn";
+                          return ["Badge VIP độc quyền", "Ưu tiên hỗ trợ 24/7", "Nhiều tài khoản hơn", viewsLabel, "Trải nghiệm không quảng cáo"].map((f) => (
+                            <div key={f} className="flex items-center gap-2 text-xs text-muted-foreground">
+                              <CheckCircle2 className="h-3.5 w-3.5 text-yellow-400 shrink-0" />
+                              {f}
+                            </div>
+                          ));
+                        })()}
+                      </div>
+
+                      <button
+                        onClick={() => handlePurchase(plan)}
+                        disabled={purchasing === plan.id}
+                        className={`w-full mt-auto rounded-xl py-3 font-bold text-sm transition-all duration-200 disabled:opacity-50 ${
+                          isPopular
+                            ? "bg-yellow-400 text-black hover:bg-yellow-300 shadow-[0_4px_20px_rgba(234,179,8,0.4)] hover:shadow-[0_4px_28px_rgba(234,179,8,0.6)] active:scale-[0.97]"
+                            : "border border-yellow-500/40 text-yellow-400 hover:bg-yellow-500/15 hover:border-yellow-400/60 active:scale-[0.97]"
+                        }`}
+                      >
+                        {purchasing === plan.id ? "Đang xử lý..." : isPopular ? "🚀 Mua ngay" : "Mua ngay"}
+                      </button>
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </div>
+
+            {/* Lifetime plan — special offer row */}
+            {lifetimePlan && (
               <motion.div
-                key={plan.id}
-                initial={{ opacity: 0, y: 20 }}
+                initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.08 }}
-                className="relative rounded-xl border border-yellow-500/30 bg-gradient-to-br from-yellow-500/10 via-card/80 to-card/60 p-4 flex flex-col"
+                transition={{ delay: regularPlans.length * 0.08 + 0.1 }}
+                className="mt-4 relative rounded-2xl border border-yellow-500/40 overflow-hidden"
+                style={{ background: "linear-gradient(135deg, rgba(234,179,8,0.08), rgba(120,53,15,0.15), rgba(15,15,15,0.95))" }}
               >
-                <h3 className="text-foreground font-bold text-sm">{plan.name}</h3>
-                {plan.description && <p className="text-muted-foreground text-[11px] mt-1 leading-snug">{plan.description}</p>}
-                <div className="mt-3 mb-4">
-                  <span className="text-yellow-400 font-extrabold text-2xl">{plan.price.toLocaleString("vi-VN")}đ</span>
-                  <span className="text-muted-foreground text-xs ml-1">/{plan.duration_days} ngày</span>
+                {/* Subtle shine line */}
+                <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-yellow-400/50 to-transparent" />
+                <div className="p-4 flex items-center gap-4">
+                  <div className="shrink-0">
+                    <div className="w-10 h-10 rounded-full bg-yellow-400/15 border border-yellow-400/30 flex items-center justify-center">
+                      <Crown className="h-5 w-5 text-yellow-400" />
+                    </div>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <p className="text-foreground font-bold text-sm">{lifetimePlan.name}</p>
+                      <span className="bg-yellow-400/20 border border-yellow-400/40 text-yellow-300 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                        ✦ SPECIAL OFFER
+                      </span>
+                    </div>
+                    <p className="text-muted-foreground text-xs">Trả một lần · Dùng mãi mãi · Không lo hết hạn</p>
+                  </div>
+                  <div className="shrink-0 text-right mr-2">
+                    <p className="text-yellow-400 font-extrabold text-xl leading-none">
+                      {lifetimePlan.price.toLocaleString("vi-VN")}đ
+                    </p>
+                    <p className="text-muted-foreground text-[10px] mt-0.5">một lần duy nhất</p>
+                  </div>
+                  <button
+                    onClick={() => handlePurchase(lifetimePlan)}
+                    disabled={purchasing === lifetimePlan.id}
+                    className="shrink-0 rounded-xl px-4 py-2.5 font-bold text-sm bg-yellow-400 text-black hover:bg-yellow-300 shadow-[0_2px_16px_rgba(234,179,8,0.3)] transition-all active:scale-[0.97] disabled:opacity-50"
+                  >
+                    {purchasing === lifetimePlan.id ? "Đang xử lý..." : "Mua"}
+                  </button>
                 </div>
-                <button
-                  onClick={() => handlePurchase(plan)}
-                  disabled={purchasing === plan.id}
-                  className="w-full mt-auto rounded-lg py-2.5 font-bold text-sm border border-yellow-500/40 text-yellow-400 hover:bg-yellow-500/20 transition-all disabled:opacity-50"
-                >
-                  {purchasing === plan.id ? "Đang xử lý..." : "Mua ngay"}
-                </button>
               </motion.div>
-            ))}
-          </div>
+            )}
+          </>
         )}
 
-        <div className="text-center mt-5">
-          <button onClick={onClose} className="bg-secondary/80 text-foreground text-sm font-medium px-6 py-2 rounded-lg hover:bg-secondary transition-colors">
+        <div className="text-center mt-6">
+          <button onClick={onClose} className="text-muted-foreground text-sm font-medium hover:text-foreground transition-colors px-4 py-2">
             Đóng
           </button>
         </div>
@@ -285,47 +459,29 @@ export const ReportCookieDialog = memo(({
   const [reportDetails, setReportDetails] = useState("");
   const [reportLoading, setReportLoading] = useState(false);
   const [reportSuccess, setReportSuccess] = useState(false);
-  const [reportAllLive, setReportAllLive] = useState(false);
   const queryClient = useQueryClient();
-  const { checkCookiesBatch } = useCookieActions(user, extensionVersion, setExtensionVersion);
 
   const handleClose = (val: boolean) => {
-    if (!val) { onClose(); setReportSuccess(false); setReportAllLive(false); setReportDetails(""); }
+    if (!val) { onClose(); setReportSuccess(false); setReportDetails(""); }
   };
 
   const handleReport = async () => {
     if (switchesLeft <= 0) { toast.error("Bạn đã hết lượt đổi tháng này!"); return; }
     setReportLoading(true);
     try {
-      const { data: assignments } = await supabase
-        .from("user_cookie_assignment")
-        .select("cookie_id, slot, cookie_stock!inner(cookie_data, is_active)")
-        .eq("user_id", user!.id)
-        .order("slot", { ascending: true });
-
-      const activeCookies: { cookie_id: string; cookie_data: string }[] = (assignments ?? [])
-        .filter((a: { cookie_stock: { is_active: boolean; cookie_data: string } | null }) => a.cookie_stock?.is_active)
-        .map((a: { cookie_id: string; cookie_stock: { cookie_data: string } | null }) => ({
-          cookie_id: a.cookie_id,
-          cookie_data: a.cookie_stock!.cookie_data,
-        }));
-
-      if (activeCookies.length === 0) { toast.error("Bạn chưa được cấp tài khoản nào."); return; }
-
-      let deadCookieIds: string[];
-      if (extensionVersion) {
-        toast.info("Đang kiểm tra tài khoản...", { duration: 3000 });
-        const liveMap = await checkCookiesBatch(activeCookies);
-        deadCookieIds = activeCookies.filter((c) => !liveMap[c.cookie_id]).map((c) => c.cookie_id);
-        if (deadCookieIds.length === 0) { setReportAllLive(true); return; }
-      } else {
-        deadCookieIds = activeCookies.map((c) => c.cookie_id);
-      }
-
-      const { data, error } = await supabase.functions.invoke("report-cookie", {
-        body: { reason: reportReason, details: reportDetails, dead_cookie_ids: deadCookieIds },
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData?.session?.access_token;
+      const res = await fetch(`https://ckamflsosjzkyukajxzu.supabase.co/functions/v1/report-cookie`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${accessToken}`,
+          "apikey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNrYW1mbHNvc2p6a3l1a2FqeHp1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0NzMyOTYsImV4cCI6MjA4NzA0OTI5Nn0.G32dB8s_G2xAWohnqegON4cfQT2tswgM9RGFt5tmud0",
+        },
+        body: JSON.stringify({ reason: reportReason, details: reportDetails }),
       });
-      if (error || data?.error) { toast.error(data?.error || error?.message || "Lỗi đổi cookie"); return; }
+      const data = await res.json();
+      if (!res.ok || data?.error) { toast.error(data?.error || "Lỗi đổi cookie"); return; }
       setReportSuccess(true);
       queryClient.invalidateQueries({ queryKey: ["profile"] });
       queryClient.invalidateQueries({ queryKey: ["cookie-assignments", user?.id] });
@@ -336,49 +492,10 @@ export const ReportCookieDialog = memo(({
     }
   };
 
-  const handleForceSwap = async () => {
-    setReportAllLive(false);
-    setReportLoading(true);
-    try {
-      const { data: assigns } = await supabase
-        .from("user_cookie_assignment")
-        .select("cookie_id")
-        .eq("user_id", user!.id);
-      const allIds = (assigns ?? []).map((a: { cookie_id: string }) => a.cookie_id);
-      const { data, error } = await supabase.functions.invoke("report-cookie", {
-        body: { reason: reportReason, details: reportDetails, dead_cookie_ids: allIds },
-      });
-      if (error || data?.error) { toast.error(data?.error || error?.message || "Lỗi"); return; }
-      setReportSuccess(true);
-      queryClient.invalidateQueries({ queryKey: ["profile"] });
-      queryClient.invalidateQueries({ queryKey: ["cookie-assignments", user?.id] });
-    } finally { setReportLoading(false); }
-  };
-
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="max-w-sm bg-card border-border/40">
-        {reportAllLive ? (
-          <div className="py-4 text-center space-y-4">
-            <div className="h-16 w-16 rounded-full bg-yellow-500/20 flex items-center justify-center mx-auto text-3xl">😏</div>
-            <div>
-              <h3 className="text-lg font-bold text-foreground mb-2">Ủa... tài khoản vẫn ổn mà?</h3>
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                Anh nhắc em, anh vừa check vẫn vào được Netflix nếu em vẫn không xem được thì bấm vào đây để cãi{" "}
-                <span className="text-yellow-400 font-bold">=)))</span>
-              </p>
-            </div>
-            <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive font-medium">
-              ⚠️ Nhớ nhé: Báo sai là ban vĩnh viễn đó nha!
-            </div>
-            <div className="flex gap-2">
-              <Button variant="outline" className="flex-1" onClick={() => { onClose(); setReportAllLive(false); }}>Thôi được rồi</Button>
-              <Button className="flex-1 font-bold" variant="destructive" onClick={handleForceSwap} disabled={reportLoading}>
-                {reportLoading ? "Đang xử lý..." : "Cãi — đổi luôn đi!"}
-              </Button>
-            </div>
-          </div>
-        ) : reportSuccess ? (
+        {reportSuccess ? (
           <div className="py-4 text-center space-y-4">
             <div className="h-16 w-16 rounded-full bg-green-500/20 flex items-center justify-center mx-auto">
               <CheckCircle2 className="h-8 w-8 text-green-400" />

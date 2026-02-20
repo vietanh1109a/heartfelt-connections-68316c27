@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useAuth } from "@/lib/auth";
-import { Search, Ban, ShieldOff, ChevronLeft, ChevronRight } from "lucide-react";
+import { Search, Ban, ShieldOff, ChevronLeft, ChevronRight, Tv } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -38,6 +38,10 @@ export function UsersTab() {
   const [banDuration, setBanDuration] = useState("24");
   const [banPermanent, setBanPermanent] = useState(false);
   const [banning, setBanning] = useState(false);
+
+  // Grant cookie state
+  const [grantCookieUser, setGrantCookieUser] = useState<any>(null);
+  const [grantingCookie, setGrantingCookie] = useState(false);
 
   const { data: adminRoles } = useQuery({
     queryKey: ["admin-all-roles"],
@@ -234,12 +238,11 @@ export function UsersTab() {
   const handleRevokeVip = async (u: any) => {
     const { error } = await supabase
       .from("profiles")
-      .update({ vip_expires_at: null })
+      .update({ vip_expires_at: null, vip_views_left: 0 })
       .eq("user_id", u.user_id);
     if (error) { toast.error("Lỗi thu hồi VIP"); return; }
 
-    // FIX: Thu hồi cookie VIP về mức Free (2 slot) bằng cách xóa assignment thừa
-    // Xóa tất cả assignment của user, sau đó gán lại 2 cookie
+    // Thu hồi cookie VIP về mức Free (2 slot)
     await supabase
       .from("user_cookie_assignment")
       .delete()
@@ -249,9 +252,34 @@ export function UsersTab() {
       desired_count: 2,
     });
 
-    await logAudit("revoke_vip", u.user_id, { cookiesReducedTo: 2 });
+    await logAudit("revoke_vip", u.user_id, { cookiesReducedTo: 2, vipViewsReset: true });
     toast.success(`Đã thu hồi VIP của ${u.display_name || "user"}`);
     queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+    queryClient.invalidateQueries({ queryKey: ["profile"] });
+  };
+
+  // Cấp lại tài khoản Netflix từ kho active
+  const handleGrantCookie = async () => {
+    if (!grantCookieUser) return;
+    setGrantingCookie(true);
+    try {
+      const isVip = grantCookieUser.vip_expires_at && new Date(grantCookieUser.vip_expires_at) > new Date();
+      const desiredCount = isVip ? 5 : 2;
+
+      const { error } = await supabase.rpc("assign_cookies_to_user", {
+        target_user_id: grantCookieUser.user_id,
+        desired_count: desiredCount,
+      });
+
+      if (error) { toast.error("Lỗi cấp tài khoản: " + error.message); return; }
+
+      await logAudit("grant_cookie", grantCookieUser.user_id, { desiredCount, isVip });
+      toast.success(`✅ Đã cấp ${desiredCount} tài khoản Netflix cho ${grantCookieUser.display_name || "user"}`);
+      queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+      setGrantCookieUser(null);
+    } finally {
+      setGrantingCookie(false);
+    }
   };
 
   const viewUserVip = viewUser ? isUserVip(viewUser) : false;
@@ -295,6 +323,9 @@ export function UsersTab() {
               </div>
             </div>
             <div className="flex gap-2 mt-2 flex-wrap">
+              <Button size="sm" variant="outline" onClick={() => setGrantCookieUser(viewUser)} className="gap-1.5">
+                <Tv className="h-3.5 w-3.5 text-primary" /> Cấp tài khoản
+              </Button>
               <Button size="sm" variant="outline" onClick={() => setGrantVipUser(viewUser)} className="gap-1.5">
                 <Crown className="h-3.5 w-3.5 text-yellow-400" /> Cấp VIP
               </Button>
@@ -411,6 +442,9 @@ export function UsersTab() {
                   <TableCell className="text-sm text-muted-foreground">{new Date(u.created_at).toLocaleDateString("vi-VN")}</TableCell>
                   <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                     <div className="flex gap-1 justify-end">
+                      <Button size="sm" variant="outline" title="Cấp tài khoản Netflix" onClick={() => setGrantCookieUser(u)}>
+                        <Tv className="h-3 w-3 text-primary" />
+                      </Button>
                       <Button size="sm" variant="outline" title="Cấp VIP" onClick={() => setGrantVipUser(u)}>
                         <Crown className="h-3 w-3 text-yellow-400" />
                       </Button>
@@ -552,6 +586,50 @@ export function UsersTab() {
             <Button onClick={handleBanUser} disabled={banning || !banReason.trim()} variant="destructive">
               <Ban className="h-4 w-4 mr-1" />
               {banning ? "Đang ban..." : "Xác nhận ban"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Grant Cookie Dialog */}
+      <Dialog open={!!grantCookieUser} onOpenChange={() => setGrantCookieUser(null)}>
+        <DialogContent className="bg-card max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Tv className="h-5 w-5 text-primary" />
+              Cấp tài khoản Netflix — {grantCookieUser?.display_name}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 text-sm">
+            <p className="text-muted-foreground">
+              Hệ thống sẽ cấp tài khoản Netflix từ kho <strong className="text-foreground">active</strong> cho người dùng này.
+            </p>
+            <div className="bg-secondary/50 border border-border/40 rounded-lg px-4 py-3 space-y-1">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Loại tài khoản:</span>
+                <span className="font-semibold text-foreground">
+                  {grantCookieUser?.vip_expires_at && new Date(grantCookieUser?.vip_expires_at) > new Date()
+                    ? <span className="text-yellow-400">VIP</span>
+                    : <span className="text-muted-foreground">Free</span>
+                  }
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Số tài khoản sẽ cấp:</span>
+                <span className="font-bold text-primary">
+                  {grantCookieUser?.vip_expires_at && new Date(grantCookieUser?.vip_expires_at) > new Date() ? 5 : 2} slot
+                </span>
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              ℹ️ Tài khoản được lấy từ kho active. Nếu kho không đủ, hệ thống sẽ cấp số lượng có sẵn.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setGrantCookieUser(null)}>Huỷ</Button>
+            <Button onClick={handleGrantCookie} disabled={grantingCookie}>
+              <Tv className="h-4 w-4 mr-1" />
+              {grantingCookie ? "Đang cấp..." : "Cấp tài khoản"}
             </Button>
           </DialogFooter>
         </DialogContent>

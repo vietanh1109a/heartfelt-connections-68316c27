@@ -32,10 +32,19 @@ Deno.serve(async (req) => {
     const { data: { user }, error: userErr } = await userClient.auth.getUser();
     if (userErr || !user) throw new Error("Unauthorized");
 
-    // Check VIP status
-    const { data: profile } = await admin.from("profiles").select("vip_expires_at").eq("user_id", user.id).single();
+    // Check VIP status + fetch slot counts from settings
+    const [profileRes, slotsRes] = await Promise.all([
+      admin.from("profiles").select("vip_expires_at").eq("user_id", user.id).single(),
+      admin.from("app_settings").select("id, value").in("id", ["vip_cookie_slots", "free_cookie_slots"]),
+    ]);
+    const profile = profileRes.data;
+    const slotsMap: Record<string, number> = {};
+    (slotsRes.data ?? []).forEach((s: any) => { slotsMap[s.id] = Number(s.value); });
+    const vipSlots = slotsMap["vip_cookie_slots"] ?? 5;
+    const freeSlots = slotsMap["free_cookie_slots"] ?? 2;
+
     const isVip = profile?.vip_expires_at && new Date(profile.vip_expires_at) > new Date();
-    const desiredCount = isVip ? 5 : 2;
+    const desiredCount = isVip ? vipSlots : freeSlots;
 
     // Call the DB function to assign cookies up to desiredCount
     const { error } = await admin.rpc("assign_cookies_to_user", {

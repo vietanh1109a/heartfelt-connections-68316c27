@@ -13,17 +13,89 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
-import { Plus, Pencil, Trash2, Wifi, Loader2, AlertTriangle, CheckCircle2, Settings2, Upload, PlayCircle, Download, XCircle, ChevronLeft, ChevronRight, CheckCheck } from "lucide-react";
+import { Plus, Pencil, Trash2, Wifi, Loader2, AlertTriangle, CheckCircle2, Settings2, Upload, PlayCircle, Download, XCircle, ChevronLeft, ChevronRight } from "lucide-react";
 import JSZip from "jszip";
 import { Progress } from "@/components/ui/progress";
 
 const EXTENSION_ID_KEY = "netflix_extension_id";
 const DEFAULT_EXTENSION_ID = "mbfelihlmccinflppkedegkojemplfml";
 
-// Parse Netscape cookie string to cookie objects
+// Known Netflix cookie names
+const knownNetflixCookies = ["NetflixId", "SecureNetflixId", "nfvdid", "memclid", "profilesNewSession", "nfvdie", "lhpuuidh"];
+
+function makeNetflixCookie(name: string, value: string) {
+  return {
+    name, value,
+    domain: ".netflix.com",
+    path: "/",
+    secure: true,
+    httpOnly: false,
+    sameSite: "no_restriction",
+    expirationDate: Math.floor(Date.now() / 1000) + 30 * 86400,
+  };
+}
+
+// Parse cookie string — supports Netscape, Name=Value, JSON array formats
 function parseCookieString(cookieString: string) {
   const cookies: any[] = [];
-  const lines = cookieString.split("\n").map(s => s.trim()).filter(Boolean);
+  if (!cookieString) return cookies;
+  const trimmed = cookieString.trim();
+
+  // Format 0: JSON array
+  if (trimmed.startsWith("[")) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (Array.isArray(parsed)) {
+        for (const c of parsed) {
+          if (c.name && c.value) cookies.push({
+            name: c.name, value: c.value,
+            domain: c.domain || ".netflix.com", path: c.path || "/",
+            secure: c.secure !== undefined ? c.secure : true,
+            httpOnly: c.httpOnly || false, sameSite: c.sameSite || "no_restriction",
+            expirationDate: c.expirationDate || (Math.floor(Date.now() / 1000) + 30 * 86400),
+          });
+        }
+        if (cookies.length > 0) return cookies;
+      }
+    } catch (e) { /* fallthrough */ }
+  }
+
+  const lines = trimmed.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n").map(s => s.trim()).filter(Boolean);
+  const hasTabLine = lines.some(l => l.split("\t").length >= 7);
+
+  // Format 2 & 3: Multi-line or single-line "Name=value"
+  if (!hasTabLine) {
+    const newFormat: any[] = [];
+    for (const line of lines) {
+      if (line.startsWith("#") || line.startsWith("//")) continue;
+      const eqIdx = line.indexOf("=");
+      if (eqIdx === -1) continue;
+      const name = line.substring(0, eqIdx).trim();
+      const value = line.substring(eqIdx + 1).trim();
+      if (name && value && knownNetflixCookies.includes(name)) {
+        newFormat.push(makeNetflixCookie(name, value));
+      }
+    }
+    if (newFormat.length > 0) return newFormat;
+
+    // Inline semicolon-separated fallback
+    if (lines.length === 1 && lines[0].includes(";")) {
+      const parts = lines[0].split(";").map(s => s.trim()).filter(Boolean);
+      for (const part of parts) {
+        const eqIdx = part.indexOf("=");
+        if (eqIdx === -1) continue;
+        const name = part.substring(0, eqIdx).trim();
+        const value = part.substring(eqIdx + 1).trim();
+        const skip = ["path", "domain", "expires", "max-age", "secure", "httponly", "samesite"];
+        if (!skip.includes(name.toLowerCase()) && name && value && knownNetflixCookies.includes(name)) {
+          cookies.push(makeNetflixCookie(name, value));
+        }
+      }
+      if (cookies.length > 0) return cookies;
+    }
+  }
+
+  // Format 1: Netscape tab-separated
   for (const line of lines) {
     if (line.startsWith("#") || line.startsWith("//")) continue;
     const tabs = line.split("\t");
@@ -165,31 +237,7 @@ export function CookieStockTab() {
     }
   };
 
-  const [resolvingId, setResolvingId] = useState<string | null>(null);
-
-  // Cookie reports query
-  const { data: cookieReports } = useQuery({
-    queryKey: ["admin-cookie-reports"],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("cookie_reports")
-        .select("*")
-        .order("created_at", { ascending: false })
-        .limit(50);
-      return data ?? [];
-    },
-  });
-
-  const handleResolveReport = async (reportId: string) => {
-    setResolvingId(reportId);
-    const { error } = await supabase
-      .from("cookie_reports")
-      .update({ status: "resolved", resolved_at: new Date().toISOString() })
-      .eq("id", reportId);
-    if (error) { toast.error("Lỗi cập nhật: " + error.message); }
-    else { toast.success("Đã đánh dấu đã xử lý"); queryClient.invalidateQueries({ queryKey: ["admin-cookie-reports"] }); }
-    setResolvingId(null);
-  };
+  // Cookie reports are now in the dedicated CookieReportsTab
 
   const { data: cookieData2, isLoading } = useQuery({
     queryKey: ["admin-cookies", cookiePage],
@@ -344,35 +392,7 @@ export function CookieStockTab() {
 
   return (
     <>
-      {/* Cookie Reports Panel */}
-      {(cookieReports?.length ?? 0) > 0 && (
-        <div className="mb-4 border border-yellow-500/30 bg-yellow-500/5 rounded-xl p-4">
-          <h3 className="font-bold text-foreground mb-3 flex items-center gap-2 text-sm">
-            <span className="text-yellow-500">⚠️</span> Báo cáo cookie hỏng ({cookieReports?.filter(r => r.status !== "resolved").length ?? 0} chưa xử lý)
-          </h3>
-          <div className="space-y-1.5 max-h-48 overflow-y-auto">
-            {cookieReports?.map((r: any) => (
-              <div key={r.id} className="flex items-center justify-between bg-card/60 rounded-lg px-3 py-2 border border-border/30">
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs text-foreground font-medium truncate">{r.reason}{r.details ? ` — ${r.details}` : ""}</p>
-                  <p className="text-[10px] text-muted-foreground">User: {r.user_id.slice(0, 8)}... • {new Date(r.created_at).toLocaleString("vi-VN")}</p>
-                </div>
-                <div className="flex items-center gap-2 ml-2 shrink-0">
-                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${r.status === "resolved" ? "bg-green-500/20 text-green-400" : "bg-yellow-500/20 text-yellow-400"}`}>
-                    {r.status === "resolved" ? "Đã xử lý" : "Chờ xử lý"}
-                  </span>
-                  {r.status !== "resolved" && (
-                    <Button size="sm" variant="outline" className="h-6 px-2 text-[10px] gap-1" onClick={() => handleResolveReport(r.id)} disabled={resolvingId === r.id}>
-                      <CheckCheck className="h-3 w-3" />
-                      Resolve
-                    </Button>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      {/* Cookie reports are now in the dedicated "Báo lỗi" tab */}
 
       {/* Extension Status Bar */}
       <div className={`flex items-center justify-between gap-2 mb-4 p-3 rounded-lg text-sm ${

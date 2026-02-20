@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
 import { useProfile } from "@/hooks/useProfile";
 import { supabase } from "@/integrations/supabase/client";
+import { formatCurrency } from "@/lib/formatCurrency";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
@@ -132,7 +133,7 @@ const Profile = () => {
             </div>
             <div>
               <p className="text-xs text-muted-foreground">Số dư tài khoản</p>
-              <p className="text-xl font-bold text-green-400">${profile?.balance ?? 0}</p>
+              <p className="text-xl font-bold text-green-400">{formatCurrency(profile?.balance ?? 0)}</p>
             </div>
           </div>
           <Button size="sm" onClick={() => navigate("/deposit")} className="text-xs">
@@ -211,7 +212,7 @@ const Profile = () => {
             <h2 className="text-foreground font-semibold">Mã giới thiệu của bạn</h2>
           </div>
           <p className="text-xs text-muted-foreground">
-            Chia sẻ mã giới thiệu (email của bạn). Khi bạn bè đăng ký dùng mã này, cả hai nhận <span className="text-primary font-semibold">+$5</span>.
+            Chia sẻ mã giới thiệu (email của bạn). Khi bạn bè đăng ký dùng mã này, cả hai nhận <span className="text-primary font-semibold">+2.500đ (5 lượt xem)</span>.
           </p>
           <div className="flex items-center gap-2 bg-secondary/60 border border-border/40 rounded-lg px-4 py-3">
             <span className="text-foreground font-mono text-sm flex-1 truncate">{referralCode}</span>

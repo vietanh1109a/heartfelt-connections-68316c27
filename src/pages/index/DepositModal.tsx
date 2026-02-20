@@ -17,7 +17,7 @@ const PRESET_AMOUNTS = [
   { label: "200k", value: 200000 },
 ];
 
-const SESSION_STORAGE_KEY = "deposit_session_v1";
+const DEPOSIT_SESSION_KEY = "deposit_session_v1";
 
 interface DepositSession {
   deposit_id: string;
@@ -84,12 +84,12 @@ export const DepositModal = ({ open, onClose }: Props) => {
   const [isCreating, setIsCreating] = useState(false);
   const [session, setSession] = useState<DepositSession | null>(() => {
     try {
-      const saved = localStorage.getItem(SESSION_STORAGE_KEY);
+      const saved = localStorage.getItem(DEPOSIT_SESSION_KEY);
       if (!saved) return null;
       const parsed: DepositSession = JSON.parse(saved);
       // Drop if already expired
       if (new Date(parsed.expires_at) < new Date()) {
-        localStorage.removeItem(SESSION_STORAGE_KEY);
+        localStorage.removeItem(DEPOSIT_SESSION_KEY);
         return null;
       }
       return parsed;
@@ -97,7 +97,7 @@ export const DepositModal = ({ open, onClose }: Props) => {
   });
   const [status, setStatus] = useState<"pending" | "paid" | "expired" | null>(() => {
     try {
-      const saved = localStorage.getItem(SESSION_STORAGE_KEY);
+      const saved = localStorage.getItem(DEPOSIT_SESSION_KEY);
       if (!saved) return null;
       const parsed: DepositSession = JSON.parse(saved);
       if (new Date(parsed.expires_at) < new Date()) return null;
@@ -114,9 +114,9 @@ export const DepositModal = ({ open, onClose }: Props) => {
   // Persist session to localStorage whenever it changes
   useEffect(() => {
     if (session) {
-      localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session));
+      localStorage.setItem(DEPOSIT_SESSION_KEY, JSON.stringify(session));
     } else {
-      localStorage.removeItem(SESSION_STORAGE_KEY);
+      localStorage.removeItem(DEPOSIT_SESSION_KEY);
     }
   }, [session]);
 
@@ -148,13 +148,13 @@ export const DepositModal = ({ open, onClose }: Props) => {
       const { data } = await (supabase as any).from("deposits").select("status").eq("id", session.deposit_id).single();
       if (data?.status === "paid") {
         setStatus("paid"); clearInterval(pollRef.current!);
-        localStorage.removeItem(SESSION_STORAGE_KEY);
+        localStorage.removeItem(DEPOSIT_SESSION_KEY);
         await refetchProfile();
         queryClient.invalidateQueries({ queryKey: ["transactions"] });
         toast.success("🎉 Nạp tiền thành công!");
       } else if (data?.status === "expired") {
         setStatus("expired"); clearInterval(pollRef.current!);
-        localStorage.removeItem(SESSION_STORAGE_KEY);
+        localStorage.removeItem(DEPOSIT_SESSION_KEY);
       }
     };
     pollRef.current = setInterval(poll, 4000);
@@ -189,7 +189,7 @@ export const DepositModal = ({ open, onClose }: Props) => {
   const handleResetSession = () => {
     clearInterval(pollRef.current!); clearInterval(timerRef.current!);
     setSession(null); setStatus(null); setTimeLeft(0);
-    localStorage.removeItem(SESSION_STORAGE_KEY);
+    localStorage.removeItem(DEPOSIT_SESSION_KEY);
   };
 
   const copyText = (text: string, label: string) => {

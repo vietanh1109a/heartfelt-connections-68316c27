@@ -1,6 +1,6 @@
+// v2 — ES256 compatible, verify_jwt = false
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-// Safe VND formatter — toLocaleString("vi-VN") can crash on Deno (no ICU data)
 function fmtVND(n: number): string {
   return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".") + "đ";
 }
@@ -14,50 +14,69 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-  const supabaseAdmin = createClient(supabaseUrl, serviceKey);
+  const supabaseAdmin = createClient(supabaseUrl, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
   try {
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader) throw new Error("Missing auth");
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: "Missing auth" }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     const token = authHeader.replace("Bearer ", "");
-
-    // Use same auth pattern as purchase-plan (working function)
     const userClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, {
       global: { headers: { Authorization: authHeader } },
     });
+
     const { data: { user }, error: userErr } = await userClient.auth.getUser(token);
-    if (userErr || !user) throw new Error("Unauthorized");
+    if (userErr || !user) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
-    const { vip_plan_id } = await req.json();
-    if (!vip_plan_id) throw new Error("Missing vip_plan_id");
+    const body = await req.json();
+    const vip_plan_id = body?.vip_plan_id;
+    if (!vip_plan_id) {
+      return new Response(JSON.stringify({ error: "Missing vip_plan_id" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
-    // Get VIP plan
     const { data: plan, error: planErr } = await supabaseAdmin
       .from("vip_plans").select("*").eq("id", vip_plan_id).eq("is_active", true).single();
-    if (planErr || !plan) throw new Error("Gói VIP không tồn tại hoặc đã ngừng bán");
+    if (planErr || !plan) {
+      return new Response(JSON.stringify({ error: "Gói VIP không tồn tại hoặc đã ngừng bán" }), {
+        status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
-    // Expire bonus if needed
     await supabaseAdmin.rpc("expire_bonus_if_needed", { target_user_id: user.id });
 
-    // Get user profile
     const { data: profile, error: profErr } = await supabaseAdmin
-      .from("profiles").select("balance, bonus_balance, bonus_expires_at, vip_expires_at").eq("user_id", user.id).single();
-    if (profErr || !profile) throw new Error("Không tìm thấy profile");
+      .from("profiles")
+      .select("balance, bonus_balance, bonus_expires_at, vip_expires_at")
+      .eq("user_id", user.id)
+      .single();
+    if (profErr || !profile) {
+      return new Response(JSON.stringify({ error: "Không tìm thấy profile" }), {
+        status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
-    // Compute effective balance
     const bonusActive = profile.bonus_expires_at && new Date(profile.bonus_expires_at) > new Date();
     const bonusBalance = bonusActive ? (profile.bonus_balance ?? 0) : 0;
     const effectiveBalance = (profile.balance ?? 0) + bonusBalance;
 
     if (effectiveBalance < plan.price) {
-      return new Response(JSON.stringify({ error: `Số dư không đủ. Cần ${fmtVND(plan.price)}, bạn có ${fmtVND(effectiveBalance)}.` }), {
+      return new Response(JSON.stringify({
+        error: `Số dư không đủ. Cần ${fmtVND(plan.price)}, bạn có ${fmtVND(effectiveBalance)}.`
+      }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Deduct from bonus first, then permanent
     let remainingDeduct = plan.price;
     let newBonusBalance = bonusBalance;
     let newPermanentBalance = profile.balance ?? 0;
@@ -69,7 +88,6 @@ Deno.serve(async (req) => {
     }
     if (remainingDeduct > 0) newPermanentBalance -= remainingDeduct;
 
-    // Calculate VIP expiry (extend if already VIP)
     const now = new Date();
     const currentExpiry = profile.vip_expires_at ? new Date(profile.vip_expires_at) : now;
     const baseDate = currentExpiry > now ? currentExpiry : now;
@@ -86,14 +104,16 @@ Deno.serve(async (req) => {
     const existingViews = (currentProfile as any)?.vip_views_left ?? 0;
     const newVipViews = existingViews === 999999 ? 999999 : existingViews + viewsToGrant;
 
-    // Update balance, VIP expiry & views
     const { error: updateErr } = await supabaseAdmin
       .from("profiles")
       .update({ balance: newPermanentBalance, bonus_balance: newBonusBalance, vip_expires_at: newExpiry.toISOString(), vip_views_left: newVipViews })
       .eq("user_id", user.id);
-    if (updateErr) throw new Error("Lỗi cập nhật: " + updateErr.message);
+    if (updateErr) {
+      return new Response(JSON.stringify({ error: "Lỗi cập nhật số dư: " + updateErr.message }), {
+        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
-    // Record VIP purchase
     await supabaseAdmin.from("vip_purchases").insert({
       user_id: user.id,
       vip_plan_id: plan.id,
@@ -106,7 +126,6 @@ Deno.serve(async (req) => {
     const vipSlots = Number(slotSetting?.value ?? 5);
     await supabaseAdmin.rpc("assign_cookies_to_user", { target_user_id: user.id, desired_count: vipSlots });
 
-    // Log transaction
     await supabaseAdmin.from("transactions").insert({
       user_id: user.id,
       amount: plan.price,
@@ -121,9 +140,10 @@ Deno.serve(async (req) => {
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
+
   } catch (e: any) {
-    console.error("purchase-vip error:", e.message);
-    return new Response(JSON.stringify({ error: e.message }), {
+    console.error("purchase-vip-v2 error:", e.message);
+    return new Response(JSON.stringify({ error: e.message || "Lỗi không xác định" }), {
       status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }

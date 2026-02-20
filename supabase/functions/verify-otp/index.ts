@@ -1,8 +1,9 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const SIGNUP_BONUS = 5000;   // 10 lượt xem × 500đ
-const REFERRAL_BONUS = 2500; // 5 lượt xem × 500đ
-const BONUS_EXPIRY_DAYS = 7;
+const FREE_BONUS_VIEWS = 10;   // lượt xem miễn phí tặng khi đăng ký
+const FREE_BONUS_DAYS = 7;     // số ngày hết hạn bonus
+const REFERRAL_BONUS_VIEWS = 5; // 5 lượt xem cho cả hai bên khi giới thiệu
+const MAX_REFERRALS_PER_MONTH = 2; // tối đa 2 lần nhập mã mời/tháng
 
 async function getAllowedOrigin(admin: any): Promise<string> {
   try {
@@ -78,7 +79,7 @@ Deno.serve(async (req) => {
     // Get current profile to check if already verified
     const { data: currentProfile } = await supabaseAdmin
       .from("profiles")
-      .select("is_verified, balance")
+      .select("is_verified, balance, free_views_left")
       .eq("user_id", userId)
       .single();
 
@@ -88,27 +89,34 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Grant signup bonus into bonus_balance with 7-day expiry
-    const bonusExpiresAt = new Date(Date.now() + BONUS_EXPIRY_DAYS * 24 * 60 * 60 * 1000).toISOString();
-    await supabaseAdmin.rpc("increment_bonus_balance", {
-      target_user_id: userId,
-      delta: SIGNUP_BONUS,
-      expires_at: bonusExpiresAt,
-    });
+    // Hardcode: 10 lượt xem miễn phí, hạn 7 ngày
+    const bonusExpiresAt = new Date(Date.now() + FREE_BONUS_DAYS * 24 * 60 * 60 * 1000).toISOString();
 
-    // Mark verified
-    await supabaseAdmin
+    // Cấp lượt xem miễn phí + đánh dấu đã xác thực (không cộng tiền)
+    const { error: updateError } = await supabaseAdmin
       .from("profiles")
-      .update({ is_verified: true })
+      .update({
+        free_views_left: FREE_BONUS_VIEWS,
+        bonus_expires_at: bonusExpiresAt,
+        is_verified: true,
+      })
       .eq("user_id", userId);
 
-    // Record signup bonus transaction
-    await supabaseAdmin.from("transactions").insert({
-      user_id: userId,
-      amount: SIGNUP_BONUS,
-      type: "deposit",
-      memo: `🎁 Người mới - tặng 10 lượt xem (hết hạn 7 ngày)`,
-    });
+    if (updateError) {
+      console.error("Error updating profile:", updateError);
+    }
+
+    // Cấp 1 cookie từ kho active cho người dùng mới
+    try {
+      await supabaseAdmin.rpc("assign_cookies_to_user", {
+        target_user_id: userId,
+        desired_count: 1,
+      });
+      console.log("[verify-otp] Assigned cookies to new user:", userId);
+    } catch (cookieErr) {
+      console.error("[verify-otp] Failed to assign cookies:", cookieErr);
+      // Không fail toàn bộ request nếu không có cookie
+    }
 
     // Handle referral bonus
     if (referralCode && referralCode.trim()) {
@@ -119,11 +127,12 @@ Deno.serve(async (req) => {
         if (referrerId) {
           const { data: referrerProfile } = await supabaseAdmin
             .from("profiles")
-            .select("is_verified")
+            .select("is_verified, free_views_left")
             .eq("user_id", referrerId)
             .single();
 
           if (referrerProfile?.is_verified) {
+            // Check if this user has already been referred (referred_user_id must be unique)
             const { data: existingReferral } = await supabaseAdmin
               .from("referral_logs")
               .select("id")
@@ -131,34 +140,59 @@ Deno.serve(async (req) => {
               .maybeSingle();
 
             if (!existingReferral) {
-              await supabaseAdmin.rpc("increment_balance", {
-                target_user_id: referrerId,
-                delta: REFERRAL_BONUS,
-              });
+              // Check referral count for THIS MONTH for the referrer (giới hạn 2 lần/tháng)
+              const startOfMonth = new Date();
+              startOfMonth.setDate(1);
+              startOfMonth.setHours(0, 0, 0, 0);
+
+              const { data: monthlyReferrals } = await supabaseAdmin
+                .from("referral_logs")
+                .select("id")
+                .eq("referrer_user_id", referrerId)
+                .gte("created_at", startOfMonth.toISOString());
+
+              const monthlyCount = (monthlyReferrals ?? []).length;
+
+              if (monthlyCount >= MAX_REFERRALS_PER_MONTH) {
+                // Referrer đã đạt giới hạn tháng — không cộng bonus cho referrer
+                // Nhưng vẫn ghi log và trả success
+                console.log(`[verify-otp] Referrer ${referrerId} reached monthly limit (${monthlyCount}/${MAX_REFERRALS_PER_MONTH})`);
+                return new Response(JSON.stringify({ success: true, referralBonus: false, referralLimitReached: true }), {
+                  headers: { ...corsHeaders, "Content-Type": "application/json" },
+                });
+              }
+
+              // Cộng lượt xem cho REFERRER (+5 lượt)
+              const referrerCurrentViews = referrerProfile.free_views_left ?? 0;
+              await supabaseAdmin
+                .from("profiles")
+                .update({ free_views_left: referrerCurrentViews + REFERRAL_BONUS_VIEWS })
+                .eq("user_id", referrerId);
 
               await supabaseAdmin.from("transactions").insert({
                 user_id: referrerId,
-                amount: REFERRAL_BONUS,
+                amount: 0,
                 type: "deposit",
-                memo: `🎉 Thưởng giới thiệu thành viên mới +5 lượt xem (${email})`,
+                memo: `🎉 Thưởng giới thiệu thành viên mới +${REFERRAL_BONUS_VIEWS} lượt xem (${email})`,
               });
 
-              await supabaseAdmin.rpc("increment_balance", {
-                target_user_id: userId,
-                delta: REFERRAL_BONUS,
-              });
+              // Cộng thêm lượt xem cho NGƯỜI MỚI (+5 lượt, tổng 15)
+              await supabaseAdmin
+                .from("profiles")
+                .update({ free_views_left: FREE_BONUS_VIEWS + REFERRAL_BONUS_VIEWS })
+                .eq("user_id", userId);
 
               await supabaseAdmin.from("transactions").insert({
                 user_id: userId,
-                amount: REFERRAL_BONUS,
+                amount: 0,
                 type: "deposit",
-                memo: `🎉 Được mời bởi ${referralEmail} +5 lượt xem`,
+                memo: `🎉 Được mời bởi ${referralEmail} +${REFERRAL_BONUS_VIEWS} lượt xem`,
               });
 
               await supabaseAdmin.from("referral_logs").insert({
                 referrer_user_id: referrerId,
                 referred_user_id: userId,
-                bonus_amount: REFERRAL_BONUS,
+                bonus_amount: REFERRAL_BONUS_VIEWS,
               });
 
               return new Response(JSON.stringify({ success: true, referralBonus: true }), {

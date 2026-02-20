@@ -1,6 +1,6 @@
-// content.js v2.1.0 — Relay messages between web page and background script
+// content.js v2.2.0 — Relay messages between web page and background script
 
-const EXTENSION_VERSION = "2.1.0";
+const EXTENSION_VERSION = "2.2.0";
 
 console.log("[Netflix Extension] Content script v" + EXTENSION_VERSION + " loaded on:", window.location.href);
 
@@ -30,11 +30,20 @@ window.addEventListener("message", (event) => {
   // === Version Check — respond directly ===
   if (event.data.type === "GET_EXTENSION_VERSION") {
     window.postMessage({ type: "EXTENSION_VERSION_RESPONSE", version: EXTENSION_VERSION }, "*");
+    // Also register this tab as a web app tab for auto-logout
+    chrome.runtime.sendMessage({ type: "REGISTER_WEB_TAB" });
   }
 
   // === Ping ===
   if (event.data.type === "PING_EXTENSION") {
     window.postMessage({ type: "PONG_EXTENSION", version: EXTENSION_VERSION }, "*");
+    // Also register this tab as a web app tab for auto-logout
+    chrome.runtime.sendMessage({ type: "REGISTER_WEB_TAB" });
+  }
+
+  // === Register Web Tab (for auto-logout tracking) ===
+  if (event.data.type === "REGISTER_WEB_TAB") {
+    chrome.runtime.sendMessage({ type: "REGISTER_WEB_TAB" });
   }
 
   // === TV Activation ===

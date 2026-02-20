@@ -26,10 +26,11 @@ Deno.serve(async (req) => {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) throw new Error("Missing auth");
 
+    const token = authHeader.replace("Bearer ", "");
     const userClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, {
       global: { headers: { Authorization: authHeader } },
     });
-    const { data: { user }, error: userErr } = await userClient.auth.getUser();
+    const { data: { user }, error: userErr } = await userClient.auth.getUser(token);
     if (userErr || !user) throw new Error("Unauthorized");
 
     const { plan_id } = await req.json();
@@ -54,7 +55,7 @@ Deno.serve(async (req) => {
     const effectiveBalance = (profile.balance ?? 0) + bonusBalance;
 
     if (effectiveBalance < plan.price) {
-      return new Response(JSON.stringify({ error: `Số dư không đủ. Cần $${plan.price}, bạn có $${effectiveBalance}.` }), {
+      return new Response(JSON.stringify({ error: `Số dư không đủ. Cần ${plan.price.toLocaleString("vi-VN")}đ, bạn có ${effectiveBalance.toLocaleString("vi-VN")}đ.` }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }

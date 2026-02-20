@@ -8,12 +8,9 @@ import { Settings, Save, RefreshCw } from "lucide-react";
 import { ModeratorPermissionsPanel } from "./ModeratorPermissionsPanel";
 
 const SETTINGS_META: Record<string, { label: string; description: string; prefix?: string; suffix?: string; type?: string }> = {
-  bank_id:              { label: "Mã ngân hàng", description: "VD: MB, VCB, TCB, ACB, BIDV..." },
-  account_no:           { label: "Số tài khoản", description: "Số tài khoản ngân hàng nhận tiền" },
-  account_name:         { label: "Tên chủ tài khoản", description: "Tên chủ tài khoản (viết hoa không dấu)" },
-  exchange_rate:        { label: "Tỷ giá quy đổi", description: "1.000 VNĐ = X $", suffix: "$ / 1.000 VNĐ", type: "number" },
   min_deposit_vnd:      { label: "Nạp tối thiểu (VNĐ)", description: "Số tiền nạp tối thiểu mỗi lần", suffix: "VNĐ", type: "number" },
   allowed_origin:       { label: "Domain cho phép (CORS)", description: "Chỉ domain này được gọi API. Dùng * để cho phép tất cả. VD: https://yourapp.com" },
+  extension_web_domain: { label: "Domain web cho Extension", description: "Domain chính của web app. Extension sẽ chỉ hoạt động trên domain này. VD: https://yourapp.com" },
   link_extension:       { label: "Link tải Extension", description: "Link Google Drive hoặc link tải file extension về máy" },
   link_guide_youtube:   { label: "Link hướng dẫn YouTube", description: "Link video hướng dẫn cài đặt Extension trên YouTube" },
   link_facebook:        { label: "Link Facebook", description: "Link trang Facebook fanpage" },
@@ -123,11 +120,10 @@ export function SettingsTab() {
     return <div className="text-center py-12 text-muted-foreground">Đang tải cài đặt...</div>;
   }
 
-  const BANK_KEYS = ["bank_id", "account_no", "account_name"];
-  const RATE_KEYS = ["exchange_rate", "min_deposit_vnd"];
+  const RATE_KEYS = ["min_deposit_vnd"];
   const CORS_KEYS = ["allowed_origin"];
+  const EXT_KEYS  = ["extension_web_domain"];
   const LINK_KEYS = ["link_extension", "link_guide_youtube", "link_facebook", "link_instagram", "link_threads", "link_tiktok", "link_telegram", "link_support"];
-  const GAME_KEYS = ["free_bonus_views", "free_bonus_days", "free_cookie_slots", "vip_cookie_slots", "free_monthly_switches", "vip_monthly_switches"];
 
   return (
     <div className="space-y-6 max-w-2xl">
@@ -136,44 +132,11 @@ export function SettingsTab() {
         <h2 className="text-foreground font-bold text-lg">Cấu hình hệ thống</h2>
       </div>
 
-      {/* Bank Info */}
+      {/* Deposit */}
       <div className="bg-card border border-border/50 rounded-xl overflow-hidden">
         <SectionHeader
-          title="💳 Thông tin ngân hàng"
-          subtitle="Dùng để tạo mã VietQR trên trang nạp tiền"
-          keys={BANK_KEYS}
-          editValues={editValues}
-          savedValues={savedValues}
-          onSave={() => handleSaveSection("bank", BANK_KEYS)}
-          onReset={() => handleResetSection(BANK_KEYS)}
-          saving={saving === "bank"}
-        />
-        <div className="divide-y divide-border/20">
-          {BANK_KEYS.map((key) => {
-            const meta = SETTINGS_META[key];
-            return (
-              <div key={key} className="px-5 py-4 flex items-center gap-4">
-                <div className="flex-1 min-w-0">
-                  <label className="text-sm font-medium text-foreground">{meta.label}</label>
-                  <p className="text-xs text-muted-foreground mt-0.5">{meta.description}</p>
-                </div>
-                <Input
-                  value={editValues[key] ?? ""}
-                  onChange={(e) => set(key, e.target.value)}
-                  className="w-52 bg-secondary border-border/40 text-sm font-mono"
-                  placeholder={meta.label}
-                />
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Exchange Rate */}
-      <div className="bg-card border border-border/50 rounded-xl overflow-hidden">
-        <SectionHeader
-          title="💰 Tỷ giá & Nạp tiền"
-          subtitle="Điều chỉnh tỷ giá quy đổi VNĐ sang $"
+          title="💰 Nạp tiền"
+          subtitle="Cài đặt giới hạn nạp tiền"
           keys={RATE_KEYS}
           editValues={editValues}
           savedValues={savedValues}
@@ -230,94 +193,43 @@ export function SettingsTab() {
               className="w-64 bg-secondary border-border/40 text-sm font-mono"
               placeholder="https://yourapp.com"
             />
+        </div>
+        </div>
+      </div>
+
+      {/* Extension Domain */}
+      <div className="bg-card border border-border/50 rounded-xl overflow-hidden">
+        <SectionHeader
+          title="🧩 Domain cho Extension"
+          subtitle="Cập nhật domain khi đổi hosting. Sau khi lưu, tải lại extension để áp dụng."
+          keys={EXT_KEYS}
+          editValues={editValues}
+          savedValues={savedValues}
+          onSave={() => handleSaveSection("ext", EXT_KEYS)}
+          onReset={() => handleResetSection(EXT_KEYS)}
+          saving={saving === "ext"}
+        />
+        <div className="divide-y divide-border/20">
+          <div className="px-5 py-4 flex items-center gap-4">
+            <div className="flex-1 min-w-0">
+              <label className="text-sm font-medium text-foreground">{SETTINGS_META["extension_web_domain"].label}</label>
+              <p className="text-xs text-muted-foreground mt-0.5">{SETTINGS_META["extension_web_domain"].description}</p>
+            </div>
+            <Input
+              value={editValues["extension_web_domain"] ?? ""}
+              onChange={(e) => set("extension_web_domain", e.target.value)}
+              className="w-64 bg-secondary border-border/40 text-sm font-mono"
+              placeholder="https://yourapp.com"
+            />
+          </div>
+          <div className="px-5 py-3 bg-secondary/30 border-t border-border/30">
+            <p className="text-xs text-muted-foreground">
+              ⚠️ <strong className="text-foreground">Lưu ý:</strong> Sau khi đổi domain, bạn cần cập nhật file <code className="bg-secondary px-1 rounded text-primary">manifest.json</code> của extension với domain mới trong mục <code className="bg-secondary px-1 rounded text-primary">externally_connectable.matches</code>, sau đó tải lại extension trong trình duyệt.
+            </p>
           </div>
         </div>
       </div>
 
-      {/* Links */}
-      <div className="bg-card border border-border/50 rounded-xl overflow-hidden">
-        <SectionHeader
-          title="🔗 Liên kết & Mạng xã hội"
-          subtitle="Link tải Extension, hướng dẫn YouTube, mạng xã hội và hỗ trợ"
-          keys={LINK_KEYS}
-          editValues={editValues}
-          savedValues={savedValues}
-          onSave={() => handleSaveSection("links", LINK_KEYS)}
-          onReset={() => handleResetSection(LINK_KEYS)}
-          saving={saving === "links"}
-        />
-        <div className="divide-y divide-border/20">
-          {LINK_KEYS.map((key) => {
-            const meta = SETTINGS_META[key];
-            return (
-              <div key={key} className="px-5 py-4 flex items-center gap-4">
-                <div className="flex-1 min-w-0">
-                  <label className="text-sm font-medium text-foreground">{meta.label}</label>
-                  <p className="text-xs text-muted-foreground mt-0.5">{meta.description}</p>
-                </div>
-                <Input
-                  value={editValues[key] ?? ""}
-                  onChange={(e) => set(key, e.target.value)}
-                  className="w-72 bg-secondary border-border/40 text-sm font-mono"
-                  placeholder="https://..."
-                />
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* VietQR Preview */}
-      {editValues.bank_id && editValues.account_no && (
-        <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 space-y-2">
-          <p className="text-xs font-semibold text-primary">Preview VietQR URL:</p>
-          <p className="text-xs text-muted-foreground font-mono break-all">
-            https://img.vietqr.io/image/{editValues.bank_id}-{editValues.account_no}-compact.png
-          </p>
-          <p className="text-xs text-muted-foreground">
-            Tỷ giá: 1.000 VNĐ = <strong className="text-foreground">${editValues.exchange_rate}</strong> &nbsp;|&nbsp;
-            Tối thiểu: <strong className="text-foreground">{Number(editValues.min_deposit_vnd || 0).toLocaleString("vi-VN")} VNĐ</strong>
-          </p>
-        </div>
-      )}
-
-      {/* Game / User Settings */}
-      <div className="bg-card border border-border/50 rounded-xl overflow-hidden">
-        <SectionHeader
-          title="🎮 Cài đặt hệ thống người dùng"
-          subtitle="Cấu hình lượt xem, hạn dùng và số tài khoản cấp cho từng loại user"
-          keys={GAME_KEYS}
-          editValues={editValues}
-          savedValues={savedValues}
-          onSave={() => handleSaveSection("game", GAME_KEYS)}
-          onReset={() => handleResetSection(GAME_KEYS)}
-          saving={saving === "game"}
-        />
-        <div className="divide-y divide-border/20">
-          {GAME_KEYS.map((key) => {
-            const meta = SETTINGS_META[key];
-            return (
-              <div key={key} className="px-5 py-4 flex items-center gap-4">
-                <div className="flex-1 min-w-0">
-                  <label className="text-sm font-medium text-foreground">{meta.label}</label>
-                  <p className="text-xs text-muted-foreground mt-0.5">{meta.description}</p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Input
-                    type="number"
-                    min="0"
-                    value={editValues[key] ?? ""}
-                    onChange={(e) => set(key, e.target.value)}
-                    className="w-24 bg-secondary border-border/40 text-sm font-mono text-center"
-                    placeholder="0"
-                  />
-                  {meta.suffix && <span className="text-xs text-muted-foreground whitespace-nowrap">{meta.suffix}</span>}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
 
       {/* Moderator Permissions */}
       <div className="bg-card border border-border/50 rounded-xl overflow-hidden">

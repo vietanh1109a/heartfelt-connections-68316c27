@@ -1,61 +1,60 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const MAX_SWITCHES_FREE = 1;
-const MAX_SWITCHES_VIP = 2;
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
 
-async function getAllowedOrigin(admin: any): Promise<string> {
+async function getSwitchLimits(admin: any): Promise<{ free: number; vip: number }> {
   try {
-    const { data } = await admin.from("app_settings").select("value").eq("id", "allowed_origin").single();
-    return data?.value || "*";
+    const { data } = await admin.from("app_settings")
+      .select("id, value")
+      .in("id", ["free_monthly_switches", "vip_monthly_switches"]);
+    const map: Record<string, number> = {};
+    (data ?? []).forEach((s: any) => { map[s.id] = Number(s.value); });
+    return {
+      free: map["free_monthly_switches"] ?? 1,
+      vip: map["vip_monthly_switches"] ?? 2,
+    };
   } catch {
-    return "*";
+    return { free: 2, vip: 10 };
   }
 }
 
 Deno.serve(async (req) => {
-  const supabaseAdmin = createClient(
-    Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-  );
+  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
-  const allowedOrigin = await getAllowedOrigin(supabaseAdmin);
-  const corsHeaders = {
-    "Access-Control-Allow-Origin": allowedOrigin,
-    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  };
-
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  const supabaseAdmin = createClient(supabaseUrl, serviceKey);
 
   try {
+    // Auth
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader) {
+    if (!authHeader?.startsWith("Bearer ")) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" }
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_ANON_KEY")!,
-      { global: { headers: { Authorization: authHeader } } }
-    );
-
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
+    const userClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, {
+      global: { headers: { Authorization: authHeader } },
+    });
+    const token = authHeader.replace("Bearer ", "");
+    const { data: claimsData, error: claimsErr } = await userClient.auth.getClaims(token);
+    if (claimsErr || !claimsData?.claims) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" }
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+    const userId = claimsData.claims.sub;
 
-    const { reason, details, dead_cookie_ids } = await req.json();
+    const { reason, details } = await req.json();
 
-    // Get user profile + VIP status
+    // Get user profile
     const { data: profile } = await supabaseAdmin
       .from("profiles")
-      .select("switch_count, switch_reset_at, balance, bonus_balance, bonus_expires_at, vip_expires_at")
-      .eq("user_id", user.id)
+      .select("switch_count, switch_reset_at, balance, bonus_balance, bonus_expires_at, vip_expires_at, free_views_left, vip_views_left")
+      .eq("user_id", userId)
       .single();
 
     if (!profile) {
@@ -64,117 +63,141 @@ Deno.serve(async (req) => {
       });
     }
 
-    // FIX: Server-side effective balance check (expire bonus if needed)
-    await supabaseAdmin.rpc("expire_bonus_if_needed", { target_user_id: user.id });
-
-    const bonusActive = profile.bonus_expires_at && new Date(profile.bonus_expires_at) > new Date();
-    const bonusBalance = bonusActive ? (profile.bonus_balance ?? 0) : 0;
-    const effectiveBalance = (profile.balance ?? 0) + bonusBalance;
-
-    // Check if user has any spendable balance (server-enforced)
-    if (effectiveBalance < 1) {
-      return new Response(JSON.stringify({ error: "Số dư không đủ để sử dụng dịch vụ." }), {
-        status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" }
-      });
-    }
-
-    // Determine max switches based on VIP status
+    // VIP check
     const isVip = !!(profile.vip_expires_at && new Date(profile.vip_expires_at) > new Date());
 
-    // Check if admin (unlimited switches)
-    const { data: adminRole } = await supabaseAdmin
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", user.id)
-      .in("role", ["admin", "moderator"])
-      .maybeSingle();
-    const isAdmin = !!adminRole;
+    // Check admin/moderator role
+    const [adminRoleRes, switchLimits] = await Promise.all([
+      supabaseAdmin.from("user_roles").select("role").eq("user_id", userId).in("role", ["admin", "moderator"]).maybeSingle(),
+      getSwitchLimits(supabaseAdmin),
+    ]);
+    const isAdmin = !!adminRoleRes.data;
 
-    const MAX_SWITCHES_PER_MONTH = isAdmin ? Infinity : (isVip ? MAX_SWITCHES_VIP : MAX_SWITCHES_FREE);
+    // ═══════════════════════════════════════════════════════════════════
+    // ANTI-SPAM DETECTION
+    // Free: 2 reports in <3 min → ban 1 day
+    // VIP: 4 reports in <5 min → ban 1 day
+    // ═══════════════════════════════════════════════════════════════════
+    if (!isAdmin) {
+      const spamWindow = isVip ? 5 : 3; // minutes
+      const spamThreshold = isVip ? 4 : 2; // reports count (including current)
+      const windowStart = new Date(Date.now() - spamWindow * 60 * 1000).toISOString();
 
-    // Check and reset switch count monthly
+      const { count: recentReports } = await supabaseAdmin
+        .from("cookie_reports")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", userId)
+        .gte("created_at", windowStart);
+
+      // If already at threshold-1 (this would be the Nth report), trigger ban
+      if ((recentReports ?? 0) >= spamThreshold - 1) {
+        const banExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+
+        // 1. Ban user for 1 day
+        await supabaseAdmin.from("user_bans").insert({
+          user_id: userId,
+          reason: "Lạm dụng tính năng báo hỏng tài khoản",
+          banned_by: "system",
+          is_permanent: false,
+          expires_at: banExpiry,
+        });
+
+        // 2. Revoke all benefits: free views, VIP views, switch count
+        await supabaseAdmin.from("profiles").update({
+          free_views_left: 0,
+          vip_views_left: 0,
+          switch_count: 0,
+        }).eq("user_id", userId);
+
+        // 3. Return assigned cookies to stock (reactivate) & remove assignments
+        const { data: assignments } = await supabaseAdmin
+          .from("user_cookie_assignment")
+          .select("cookie_id")
+          .eq("user_id", userId);
+
+        if (assignments && assignments.length > 0) {
+          // Reactivate cookies back into stock
+          const cookieIds = assignments.map((a: any) => a.cookie_id);
+          await supabaseAdmin.from("cookie_stock").update({ is_active: true }).in("id", cookieIds);
+          // Remove assignments
+          await supabaseAdmin.from("user_cookie_assignment").delete().eq("user_id", userId);
+        }
+
+        // 4. Log transaction
+        await supabaseAdmin.from("transactions").insert({
+          user_id: userId,
+          amount: 0,
+          type: "usage",
+          memo: `🚫 Bị ban 1 ngày — Lạm dụng tính năng báo hỏng (${(recentReports ?? 0) + 1} lần trong ${spamWindow} phút)`,
+        });
+
+        return new Response(JSON.stringify({
+          error: `Tài khoản của bạn đã bị khóa 1 ngày do lạm dụng tính năng báo hỏng tài khoản. Toàn bộ quyền lợi đã bị thu hồi.`,
+          banned: true,
+        }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+    }
+
+    // Switch limits
+    const MAX_SWITCHES = isAdmin ? Infinity : (isVip ? switchLimits.vip : switchLimits.free);
+
+    // Monthly reset
     const now = new Date();
     let switchCount = profile.switch_count ?? 0;
     const resetAt = profile.switch_reset_at ? new Date(profile.switch_reset_at) : null;
-
     if (!resetAt || now.getMonth() !== resetAt.getMonth() || now.getFullYear() !== resetAt.getFullYear()) {
       switchCount = 0;
     }
 
-    if (!isAdmin && switchCount >= MAX_SWITCHES_PER_MONTH) {
+    if (!isAdmin && switchCount >= MAX_SWITCHES) {
       return new Response(JSON.stringify({
-        error: `Bạn đã hết lượt đổi tài khoản trong tháng này (${MAX_SWITCHES_PER_MONTH}/${MAX_SWITCHES_PER_MONTH}).`
+        error: `Bạn đã hết lượt đổi tài khoản trong tháng này (${MAX_SWITCHES}/${MAX_SWITCHES}).`
       }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // Get all current cookie assignments for user
-    const { data: assignments } = await supabaseAdmin
+    // 1. Get current assignments to exclude
+    const { data: currentAssignments } = await supabaseAdmin
       .from("user_cookie_assignment")
-      .select("cookie_id, slot")
-      .eq("user_id", user.id)
-      .order("slot", { ascending: true });
+      .select("cookie_id")
+      .eq("user_id", userId);
 
-    if (!assignments || assignments.length === 0) {
-      return new Response(JSON.stringify({ error: "Bạn chưa được gán cookie nào." }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" }
-      });
+    const oldCookieIds = (currentAssignments ?? []).map((a: any) => a.cookie_id);
+
+    // 2. DEACTIVATE reported cookies (temporarily remove from stock)
+    if (oldCookieIds.length > 0) {
+      await supabaseAdmin.from("cookie_stock").update({ is_active: false }).in("id", oldCookieIds);
     }
 
-    const deadIds: string[] = Array.isArray(dead_cookie_ids) && dead_cookie_ids.length > 0
-      ? dead_cookie_ids
-      : assignments.map((a: any) => a.cookie_id);
-
-    const deadCount = deadIds.length;
-    const totalSlots = assignments.length;
-
-    const newSlotsNeeded = deadCount >= totalSlots ? 1 : deadCount;
-
+    // 3. Delete all current assignments
     await supabaseAdmin
       .from("user_cookie_assignment")
       .delete()
-      .eq("user_id", user.id)
-      .in("cookie_id", deadIds);
+      .eq("user_id", userId);
 
-    const keepIds = assignments
-      .map((a: any) => a.cookie_id)
-      .filter((id: string) => !deadIds.includes(id));
+    // 4. Pick a random active cookie from stock (exclude old ones)
+    const excludeList = oldCookieIds.length > 0
+      ? `(${oldCookieIds.join(",")})`
+      : null;
 
-    const allKnownIds = assignments.map((a: any) => a.cookie_id);
-    const { data: freshCookies } = await supabaseAdmin
+    let query = supabaseAdmin
       .from("cookie_stock")
-      .select("id")
-      .eq("is_active", true)
-      .not("id", "in", `(${allKnownIds.map((id: string) => `'${id}'`).join(",")})`)
-      .order("updated_at", { ascending: true })
-      .limit(newSlotsNeeded);
+      .select("id, is_active")
+      .eq("is_active", true);
 
-    let cookiesToAdd = freshCookies ?? [];
-
-    if (cookiesToAdd.length < newSlotsNeeded) {
-      const exclude = keepIds.length > 0
-        ? `(${keepIds.map((id: string) => `'${id}'`).join(",")})`
-        : null;
-
-      let query = supabaseAdmin
-        .from("cookie_stock")
-        .select("id")
-        .eq("is_active", true)
-        .order("updated_at", { ascending: true })
-        .limit(newSlotsNeeded);
-
-      if (exclude) {
-        query = query.not("id", "in", exclude);
-      }
-
-      const { data: anyCookies } = await query;
-      cookiesToAdd = anyCookies ?? [];
+    if (excludeList) {
+      query = query.not("id", "in", excludeList);
     }
 
-    if (cookiesToAdd.length === 0) {
-      const restoreRows = assignments
-        .filter((a: any) => deadIds.includes(a.cookie_id))
-        .map((a: any) => ({ user_id: user.id, cookie_id: a.cookie_id, slot: a.slot }));
-      if (restoreRows.length > 0) {
+    const { data: candidates } = await query;
+
+    if (!candidates || candidates.length === 0) {
+      // Restore old assignments if no cookies available
+      if (oldCookieIds.length > 0) {
+        // Re-activate old cookies since we can't replace
+        await supabaseAdmin.from("cookie_stock").update({ is_active: true }).in("id", oldCookieIds);
+        const restoreRows = oldCookieIds.map((id: string, i: number) => ({
+          user_id: userId, cookie_id: id, slot: i + 1,
+        }));
         await supabaseAdmin.from("user_cookie_assignment").insert(restoreRows);
       }
       return new Response(JSON.stringify({ error: "Hệ thống hiện không có cookie khả dụng. Vui lòng liên hệ admin." }), {
@@ -182,56 +205,48 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { data: remainingSlots } = await supabaseAdmin
-      .from("user_cookie_assignment")
-      .select("slot")
-      .eq("user_id", user.id)
-      .order("slot", { ascending: false })
-      .limit(1);
+    // Shuffle and pick one random
+    const shuffled = candidates.sort(() => Math.random() - 0.5);
+    const picked = shuffled[0];
 
-    const maxSlot = remainingSlots && remainingSlots.length > 0 ? (remainingSlots[0] as any).slot : 0;
+    // 5. Assign the picked cookie
+    await supabaseAdmin.from("user_cookie_assignment").insert({
+      user_id: userId,
+      cookie_id: picked.id,
+      slot: 1,
+    });
 
-    const newRows = cookiesToAdd.map((c: any, i: number) => ({
-      user_id: user.id,
-      cookie_id: c.id,
-      slot: maxSlot + i + 1,
-    }));
-    await supabaseAdmin.from("user_cookie_assignment").insert(newRows);
-
+    // 6. Update switch count
     await supabaseAdmin
       .from("profiles")
-      .update({
-        switch_count: switchCount + 1,
-        switch_reset_at: now.toISOString(),
-      })
-      .eq("user_id", user.id);
+      .update({ switch_count: switchCount + 1, switch_reset_at: now.toISOString() })
+      .eq("user_id", userId);
+
+    // 7. Log report for admin — store reported cookie IDs in details as JSON
+    const reportDetails = JSON.stringify({
+      text: details || null,
+      reported_cookie_ids: oldCookieIds,
+    });
 
     await supabaseAdmin.from("cookie_reports").insert({
-      user_id: user.id,
+      user_id: userId,
       reason: reason || "Không rõ",
-      details: details || null,
+      details: reportDetails,
       status: "pending",
     });
 
-    const changedCount = deadCount >= totalSlots
-      ? `${deadCount} chết → cấp 1 mới`
-      : `${deadCount} chết → đổi ${cookiesToAdd.length} mới`;
-
+    // 8. Log transaction
     await supabaseAdmin.from("transactions").insert({
-      user_id: user.id,
+      user_id: userId,
       amount: 0,
       type: "usage",
-      memo: `🔄 Báo hỏng & đổi cookie — ${changedCount} — Lý do: ${reason || "Không rõ"}${details ? ` (${details})` : ""}`,
+      memo: `🔄 Báo hỏng & đổi cookie — Lý do: ${reason || "Không rõ"}${details ? ` (${details})` : ""}`,
     });
 
     return new Response(JSON.stringify({
       success: true,
-      switchesLeft: isAdmin ? "∞" : MAX_SWITCHES_PER_MONTH - (switchCount + 1),
-      deadCount,
-      newCount: cookiesToAdd.length,
-      message: deadCount >= totalSlots
-        ? `Đã đổi ${cookiesToAdd.length} tài khoản mới (${deadCount} tài khoản cũ đều bị lỗi).`
-        : `Đã thay thế ${cookiesToAdd.length} tài khoản bị lỗi!`,
+      switchesLeft: isAdmin ? "∞" : MAX_SWITCHES - (switchCount + 1),
+      message: "Đã cấp tài khoản mới thành công!",
     }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
   } catch (error) {

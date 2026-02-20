@@ -15,3 +15,18 @@ verify_jwt = false
 [functions.sepay-webhook]
 verify_jwt = false
 
+[functions.purchase-vip]
+verify_jwt = false
+
+[functions.purchase-plan]
+verify_jwt = false
+
+[functions.purchase-vip-v2]
+verify_jwt = false
+
+[functions.assign-cookie]
+verify_jwt = false
+
+[functions.report-cookie]
+verify_jwt = false
+

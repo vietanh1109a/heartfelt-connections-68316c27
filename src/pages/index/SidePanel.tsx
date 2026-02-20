@@ -18,6 +18,7 @@ interface Props {
   switchesLeft: number;
   activeCookieCount: number;
   freeViews: number;
+  vipViews: number;
   onShowInfo: () => void;
   onShowVipPlans: () => void;
   onShowReportDialog: () => void;
@@ -29,7 +30,7 @@ interface Props {
 
 const SidePanel = memo(({
   profile, isVip, vipExpiresAt, maxSwitches, switchesLeft,
-  activeCookieCount, freeViews, onShowInfo, onShowVipPlans, onShowReportDialog,
+  activeCookieCount, freeViews, vipViews, onShowInfo, onShowVipPlans, onShowReportDialog,
   onShowDeposit, isGuest = false, extensionVersion, onShowExtensionModal: _onShowExtensionModal,
 }: Props) => {
   const navigate = useNavigate();
@@ -123,7 +124,7 @@ const SidePanel = memo(({
                     <Star className="h-3 w-3" /> FREE
                   </span>
                 )}
-                <span className="text-foreground font-semibold text-sm">{isVip ? "VIP" : "Gói miễn phí"}</span>
+                <span className="text-foreground font-semibold text-sm">{isVip ? "Thành viên VIP" : "Gói miễn phí"}</span>
               </div>
               <button
                 onClick={onShowInfo}
@@ -137,6 +138,7 @@ const SidePanel = memo(({
               <div className="space-y-0">
                 {[
                   { label: "Số dư:", value: fmtVnd(permanentBalance), color: "text-green-400" },
+                  { label: "Lượt xem VIP:", value: vipViews >= 999999 ? "Không giới hạn ∞" : `${vipViews} lượt`, color: "text-yellow-400", icon: <Eye className="h-3 w-3 text-yellow-400 inline mr-1" /> },
                   { label: "Lượt xem miễn phí:", value: `${freeViews} lượt`, color: "text-primary", icon: <Eye className="h-3 w-3 text-primary inline mr-1" /> },
                   { label: "VIP hết hạn:", value: vipExpiresAt ? vipExpiresAt.toLocaleDateString("vi-VN") : "—", color: "text-yellow-400" },
                   { label: "Còn lại:", value: vipExpiresAt ? `${Math.max(0, Math.ceil((vipExpiresAt.getTime() - Date.now()) / (1000 * 60 * 60 * 24)))} ngày` : "—", color: "text-yellow-400" },
@@ -169,11 +171,9 @@ const SidePanel = memo(({
                   <span className="text-sm text-muted-foreground">Số dư:</span>
                   <span className="text-sm font-semibold text-green-400">{fmtVnd(permanentBalance)}</span>
                 </div>
-                <div className="flex items-center justify-between py-3 border-b border-border/20">
-                  <span className="text-sm text-muted-foreground flex items-center gap-1">
-                    <Eye className="h-3.5 w-3.5" /> Lượt xem miễn phí:
-                  </span>
-                  <span className="text-sm font-semibold text-primary">{freeViews} lượt</span>
+                <div className="mt-2 mb-1 px-2 py-1.5 bg-green-500/10 border border-green-500/20 rounded-lg flex justify-between text-xs">
+                  <span className="text-green-400/80 flex items-center gap-1"><Eye className="h-3 w-3" /> Lượt xem miễn phí:</span>
+                  <span className="text-green-400 font-semibold">{freeViews} lượt</span>
                 </div>
                 <div className="flex items-center justify-between py-3 border-b border-border/20">
                   <span className="text-sm text-muted-foreground">Hết hạn lượt xem:</span>
@@ -189,12 +189,6 @@ const SidePanel = memo(({
                   <span className="text-sm text-muted-foreground">Lượt đổi tháng:</span>
                   <span className="text-sm font-semibold text-foreground">{switchesLeft}/{maxSwitches}</span>
                 </div>
-                {bonusActive && bonusBalance > 0 && (
-                  <div className="mt-2 px-2 py-1.5 bg-green-500/10 border border-green-500/20 rounded-lg flex justify-between text-xs">
-                    <span className="text-green-400/80">🎁 Người mới (hết hạn {expiresDateStr}):</span>
-                    <span className="text-green-400 font-semibold">{freeViews} lượt</span>
-                  </div>
-                )}
                 <button onClick={onShowVipPlans} className="w-full mt-3 py-2.5 rounded-lg text-sm font-bold text-foreground border border-yellow-500/40 hover:bg-yellow-500/10 hover:border-yellow-500/60 transition-all flex items-center justify-center gap-2">
                   <Crown className="h-4 w-4 text-yellow-400" />
                   <span>Nâng cấp <span className="text-yellow-400">VIP</span></span>

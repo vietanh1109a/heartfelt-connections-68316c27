@@ -118,13 +118,8 @@ Deno.serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e: any) {
-    const supabaseUrl2 = Deno.env.get("SUPABASE_URL")!;
-    const serviceKey2 = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const adminFallback = createClient(supabaseUrl2, serviceKey2);
-    const ao = await getAllowedOrigin(adminFallback);
-    const ch = buildCorsHeaders(ao);
     return new Response(JSON.stringify({ error: e.message }), {
-      status: 500, headers: { ...ch, "Content-Type": "application/json" },
+      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 });
