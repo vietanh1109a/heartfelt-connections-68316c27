@@ -1,6 +1,6 @@
 import { memo } from "react";
 import { motion } from "framer-motion";
-import { Shield, MessageCircle } from "lucide-react";
+import { Shield, MessageCircle, AlertTriangle } from "lucide-react";
 import type { Tables } from "@/integrations/supabase/types";
 import { useAppSettings } from "@/hooks/useAppSettings";
 
@@ -13,6 +13,7 @@ interface Props {
 
 const BanOverlay = memo(({ ban, onSignOut }: Props) => {
   const { linkSupport } = useAppSettings();
+  const isAbuseBan = ban.reason?.includes("Lạm dụng") || ban.banned_by === "system";
 
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 backdrop-blur-md">
@@ -32,6 +33,17 @@ const BanOverlay = memo(({ ban, onSignOut }: Props) => {
           </div>
         </div>
         <div className="px-6 py-5 space-y-4">
+          {/* Abuse-specific warning */}
+          {isAbuseBan && (
+            <div className="rounded-xl bg-destructive/10 border border-destructive/30 p-3 flex items-start gap-2">
+              <AlertTriangle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
+              <div className="text-xs text-destructive space-y-1">
+                <p className="font-bold">⚠️ Vi phạm chính sách sử dụng</p>
+                <p>Toàn bộ số dư, lượt xem, quyền VIP và tài khoản Netflix đã bị thu hồi do phát hiện hành vi lạm dụng tính năng.</p>
+              </div>
+            </div>
+          )}
+
           <div className="rounded-xl bg-destructive/5 border border-destructive/20 p-4 space-y-3">
             <div>
               <p className="text-xs text-muted-foreground mb-1">Lý do bị khóa:</p>
@@ -40,7 +52,7 @@ const BanOverlay = memo(({ ban, onSignOut }: Props) => {
             <div className="flex gap-6">
               <div>
                 <p className="text-xs text-muted-foreground mb-1">Thời gian khóa:</p>
-                <p className="text-sm text-foreground">{new Date(ban.banned_at).toLocaleString("vi-VN")}</p>
+                <p className="text-sm font-semibold text-foreground">{new Date(ban.banned_at).toLocaleString("vi-VN")}</p>
               </div>
               <div>
                 <p className="text-xs text-muted-foreground mb-1">Hết hạn lúc:</p>
@@ -50,6 +62,17 @@ const BanOverlay = memo(({ ban, onSignOut }: Props) => {
               </div>
             </div>
           </div>
+
+          {isAbuseBan && (
+            <div className="rounded-xl bg-yellow-500/5 border border-yellow-500/20 p-3 text-xs text-muted-foreground space-y-1">
+              <p className="font-semibold text-yellow-400">📋 Quyền lợi đã bị thu hồi:</p>
+              <p>• Số dư tài khoản: <span className="text-destructive font-medium">0đ</span></p>
+              <p>• Lượt xem miễn phí & VIP: <span className="text-destructive font-medium">0 lượt</span></p>
+              <p>• Trạng thái VIP: <span className="text-destructive font-medium">Đã hủy</span></p>
+              <p>• Tài khoản Netflix: <span className="text-destructive font-medium">Đã thu hồi</span></p>
+            </div>
+          )}
+
           <p className="text-xs text-muted-foreground text-center">
             Nếu bạn cho rằng đây là nhầm lẫn, hãy gửi khiếu nại để được xem xét.
           </p>

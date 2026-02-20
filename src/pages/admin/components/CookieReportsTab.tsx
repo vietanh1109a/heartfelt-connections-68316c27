@@ -7,6 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { AlertTriangle, CheckCircle2, Wifi, Loader2, Trash2, Clock, User, ChevronLeft, ChevronRight, RotateCcw, Shield } from "lucide-react";
+import { parseCookieString } from "@/lib/parseCookies";
 
 const PAGE_SIZE = 20;
 
@@ -116,7 +117,7 @@ export function CookieReportsTab() {
         window.addEventListener("message", h);
         window.postMessage({
           type: "CHECK_LIVE_BATCH",
-          cookieSets: [{ id: cookieId, cookieData: cookie.cookie_data }],
+          cookieSets: [{ id: cookieId, cookies: parseCookieString(cookie.cookie_data) }],
         }, "*");
       });
 
