@@ -13,8 +13,8 @@ async function getSwitchLimits(admin: any): Promise<{ free: number; vip: number 
     const map: Record<string, number> = {};
     (data ?? []).forEach((s: any) => { map[s.id] = Number(s.value); });
     return {
-      free: map["free_monthly_switches"] ?? 1,
-      vip: map["vip_monthly_switches"] ?? 2,
+      free: map["free_monthly_switches"] ?? 2,
+      vip: map["vip_monthly_switches"] ?? 10,
     };
   } catch {
     return { free: 2, vip: 10 };
@@ -102,10 +102,14 @@ Deno.serve(async (req) => {
           expires_at: banExpiry,
         });
 
-        // 2. Revoke all benefits: free views, VIP views, switch count
+        // 2. Revoke ALL benefits: money, views, VIP, switches
         await supabaseAdmin.from("profiles").update({
+          balance: 0,
+          bonus_balance: 0,
+          bonus_expires_at: null,
           free_views_left: 0,
           vip_views_left: 0,
+          vip_expires_at: null,
           switch_count: 0,
         }).eq("user_id", userId);
 
@@ -132,7 +136,7 @@ Deno.serve(async (req) => {
         });
 
         return new Response(JSON.stringify({
-          error: `Tài khoản của bạn đã bị khóa 1 ngày do lạm dụng tính năng báo hỏng tài khoản. Toàn bộ quyền lợi đã bị thu hồi.`,
+          error: `Tài khoản của bạn đã bị khóa 1 ngày do lạm dụng tính năng báo hỏng tài khoản. Toàn bộ số dư, lượt xem và quyền VIP đã bị thu hồi.`,
           banned: true,
         }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
