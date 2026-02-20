@@ -29,7 +29,7 @@ export function useAppSettings() {
     freeBonusDays:       Number(data?.free_bonus_days      ?? 7),
     freeCookieSlots:     Number(data?.free_cookie_slots    ?? 2),
     vipCookieSlots:      Number(data?.vip_cookie_slots     ?? 5),
-    freeMonthlySwitches: Number(data?.free_monthly_switches ?? 1),
-    vipMonthlySwitches:  Number(data?.vip_monthly_switches  ?? 2),
+    freeMonthlySwitches: Number(data?.free_monthly_switches ?? 2),
+    vipMonthlySwitches:  Number(data?.vip_monthly_switches  ?? 10),
   };
 }
