@@ -35,13 +35,34 @@ export function CookieReportsTab() {
   const { data: reportsData, isLoading } = useQuery({
     queryKey: ["cookie-reports", page],
     queryFn: async () => {
-      const { data, error, count } = await supabase
+      // Fetch reports (no join — cookie_reports has no FK to profiles)
+      const { data: rawReports, error, count } = await supabase
         .from("cookie_reports")
-        .select("*, profiles(display_name, user_id, vip_expires_at)", { count: "exact" })
+        .select("*", { count: "exact" })
         .order("created_at", { ascending: false })
         .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
       if (error) throw error;
-      return { reports: data ?? [], total: count ?? 0 };
+
+      const reports = rawReports ?? [];
+
+      // Fetch profiles for the user_ids in these reports
+      const userIds = [...new Set(reports.map((r: any) => r.user_id))];
+      let profilesMap: Record<string, any> = {};
+      if (userIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from("profiles")
+          .select("user_id, display_name, vip_expires_at")
+          .in("user_id", userIds);
+        (profiles ?? []).forEach((p: any) => { profilesMap[p.user_id] = p; });
+      }
+
+      // Attach profiles to reports
+      const enrichedReports = reports.map((r: any) => ({
+        ...r,
+        profiles: profilesMap[r.user_id] || null,
+      }));
+
+      return { reports: enrichedReports, total: count ?? 0 };
     },
   });
 
