@@ -1,0 +1,17 @@
+project_id = "ckamflsosjzkyukajxzu"
+
+[functions.send-otp]
+verify_jwt = false
+
+[functions.verify-otp]
+verify_jwt = false
+
+[functions.deduct-balance]
+verify_jwt = false
+
+[functions.create-deposit]
+verify_jwt = false
+
+[functions.sepay-webhook]
+verify_jwt = false
+
