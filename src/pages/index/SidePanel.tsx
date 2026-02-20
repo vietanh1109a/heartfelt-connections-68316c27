@@ -143,7 +143,7 @@ const SidePanel = memo(({
                   { label: "VIP hết hạn:", value: vipExpiresAt ? vipExpiresAt.toLocaleDateString("vi-VN") : "—", color: "text-yellow-400" },
                   { label: "Còn lại:", value: vipExpiresAt ? `${Math.max(0, Math.ceil((vipExpiresAt.getTime() - Date.now()) / (1000 * 60 * 60 * 24)))} ngày` : "—", color: "text-yellow-400" },
                   { label: "Tài khoản đang dùng:", value: `${activeCookieCount}`, color: "text-yellow-400" },
-                  { label: "Lượt đổi tháng:", value: `${switchesLeft}/${maxSwitches}`, color: "text-foreground" },
+                  { label: "Lượt đổi tháng:", value: `${switchesLeft}/${maxSwitches === Infinity ? "∞" : maxSwitches}`, color: "text-foreground" },
                 ].map((row, i) => (
                   <div key={i} className="flex items-center justify-between py-3 border-b border-border/20 last:border-0">
                     <span className="text-sm text-muted-foreground">{row.label}</span>
@@ -187,7 +187,7 @@ const SidePanel = memo(({
                 </div>
                 <div className="flex items-center justify-between py-3 border-b border-border/20 last:border-0">
                   <span className="text-sm text-muted-foreground">Lượt đổi tháng:</span>
-                  <span className="text-sm font-semibold text-foreground">{switchesLeft}/{maxSwitches}</span>
+                  <span className="text-sm font-semibold text-foreground">{switchesLeft}/{maxSwitches === Infinity ? "∞" : maxSwitches}</span>
                 </div>
                 <button onClick={onShowVipPlans} className="w-full mt-3 py-2.5 rounded-lg text-sm font-bold text-foreground border border-yellow-500/40 hover:bg-yellow-500/10 hover:border-yellow-500/60 transition-all flex items-center justify-center gap-2">
                   <Crown className="h-4 w-4 text-yellow-400" />
@@ -232,7 +232,7 @@ const SidePanel = memo(({
               </div>
               <div className="flex-shrink-0 flex flex-col items-end gap-0.5">
                 <span className={`text-sm font-bold ${switchesLeft > 0 ? "text-yellow-400" : "text-muted-foreground"}`}>
-                  {switchesLeft}/{maxSwitches}
+                  {switchesLeft}/{maxSwitches === Infinity ? "∞" : maxSwitches}
                 </span>
                 <span className="text-xs text-muted-foreground">lượt</span>
               </div>
