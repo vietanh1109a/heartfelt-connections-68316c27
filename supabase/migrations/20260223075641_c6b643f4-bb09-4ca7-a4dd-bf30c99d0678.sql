@@ -1,0 +1,1 @@
+ALTER TABLE public.ctv_listings ADD COLUMN warranty_hours integer NOT NULL DEFAULT 24;

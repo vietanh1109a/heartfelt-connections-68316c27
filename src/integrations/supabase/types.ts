@@ -177,6 +177,7 @@ export type Database = {
           title: string
           total_sold: number
           updated_at: string
+          warranty_hours: number
         }
         Insert: {
           category?: string
@@ -191,6 +192,7 @@ export type Database = {
           title: string
           total_sold?: number
           updated_at?: string
+          warranty_hours?: number
         }
         Update: {
           category?: string
@@ -205,6 +207,7 @@ export type Database = {
           title?: string
           total_sold?: number
           updated_at?: string
+          warranty_hours?: number
         }
         Relationships: [
           {
