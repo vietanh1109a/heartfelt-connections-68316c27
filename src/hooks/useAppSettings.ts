@@ -31,5 +31,6 @@ export function useAppSettings() {
     vipCookieSlots:      Number(data?.vip_cookie_slots     ?? 5),
     freeMonthlySwitches: Number(data?.free_monthly_switches ?? 2),
     vipMonthlySwitches:  Number(data?.vip_monthly_switches  ?? 10),
+    warrantyDays:        Number(data?.warranty_days         ?? 30),
   };
 }

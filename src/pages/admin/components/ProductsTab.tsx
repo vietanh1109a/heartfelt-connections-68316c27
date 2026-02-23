@@ -16,6 +16,7 @@ interface Product {
   note: string | null;
   category: string;
   price: number;
+  original_price: number | null;
   thumbnail_url: string | null;
   is_active: boolean;
   sold_count: number;
@@ -42,6 +43,7 @@ export function ProductsTab() {
   const [formNote, setFormNote] = useState("");
   const [formCategory, setFormCategory] = useState("product");
   const [formPrice, setFormPrice] = useState("");
+  const [formOriginalPrice, setFormOriginalPrice] = useState("");
   const [formThumbnail, setFormThumbnail] = useState("");
 
   const { data: products = [], isLoading } = useQuery({
@@ -77,6 +79,7 @@ export function ProductsTab() {
     setFormNote("");
     setFormCategory("product");
     setFormPrice("");
+    setFormOriginalPrice("");
     setFormThumbnail("");
     setEditProduct(null);
   };
@@ -87,6 +90,7 @@ export function ProductsTab() {
     setFormNote(p.note || "");
     setFormCategory(p.category);
     setFormPrice(String(p.price));
+    setFormOriginalPrice(p.original_price ? String(p.original_price) : "");
     setFormThumbnail(p.thumbnail_url || "");
     setEditProduct(p);
     setShowForm(true);
@@ -123,6 +127,7 @@ export function ProductsTab() {
         note: formNote.trim() || null,
         category: formCategory,
         price: parseInt(formPrice),
+        original_price: formOriginalPrice ? parseInt(formOriginalPrice) : null,
         thumbnail_url: formThumbnail || null,
       };
 
@@ -284,7 +289,17 @@ export function ProductsTab() {
               </Select>
             </div>
             <div>
-              <label className="text-sm font-medium text-foreground">Giá (VNĐ) *</label>
+              <label className="text-sm font-medium text-foreground">Giá bán (VNĐ) *</label>
+              <Input type="number" value={formPrice} onChange={(e) => setFormPrice(e.target.value)} placeholder="100000" className="mt-1" />
+            </div>
+            <div>
+              <label className="text-sm font-medium text-foreground">Giá gốc (VNĐ) – để trống nếu không giảm giá</label>
+              <Input type="number" value={formOriginalPrice} onChange={(e) => setFormOriginalPrice(e.target.value)} placeholder="150000" className="mt-1" />
+              {formOriginalPrice && formPrice && parseInt(formOriginalPrice) > parseInt(formPrice) && (
+                <p className="text-xs text-green-400 mt-1">
+                  Tiết kiệm {Math.round((1 - parseInt(formPrice) / parseInt(formOriginalPrice)) * 100)}%
+                </p>
+              )}
               <Input type="number" value={formPrice} onChange={(e) => setFormPrice(e.target.value)} placeholder="10000" className="mt-1" />
             </div>
             <div>

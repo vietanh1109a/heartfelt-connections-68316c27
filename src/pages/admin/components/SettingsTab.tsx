@@ -25,6 +25,7 @@ const SETTINGS_META: Record<string, { label: string; description: string; prefix
   vip_cookie_slots:     { label: "Tài khoản cấp cho VIP", description: "Số slot cookie cấp cho mỗi user VIP", suffix: "slot", type: "number" },
   free_monthly_switches:{ label: "Lượt đổi/tháng (Free)", description: "Số lần đổi tài khoản cho user Free mỗi tháng", suffix: "lượt", type: "number" },
   vip_monthly_switches: { label: "Lượt đổi/tháng (VIP)", description: "Số lần đổi tài khoản cho user VIP mỗi tháng", suffix: "lượt", type: "number" },
+  warranty_days:        { label: "Bảo hành sản phẩm", description: "Số ngày bảo hành hiển thị cho sản phẩm trong shop", suffix: "ngày", type: "number" },
 };
 
 async function saveKeys(keys: string[], editValues: Record<string, string>) {
@@ -266,7 +267,7 @@ export function SettingsTab() {
 
       {/* Game Settings */}
       {(() => {
-        const GAME_KEYS = ["free_bonus_views", "free_bonus_days", "free_cookie_slots", "vip_cookie_slots", "free_monthly_switches", "vip_monthly_switches"];
+        const GAME_KEYS = ["free_bonus_views", "free_bonus_days", "free_cookie_slots", "vip_cookie_slots", "free_monthly_switches", "vip_monthly_switches", "warranty_days"];
         return (
           <div className="bg-card border border-border/50 rounded-xl overflow-hidden">
             <SectionHeader

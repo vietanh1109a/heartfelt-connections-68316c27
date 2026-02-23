@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
+import { useAppSettings } from "@/hooks/useAppSettings";
 import { toast } from "sonner";
 import { ArrowLeft, ShoppingCart, Package, Gamepad2, Copy, Check, Shield, Zap, MessageCircle, Flame, BadgeCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -15,6 +16,7 @@ interface Product {
   note: string | null;
   category: string;
   price: number;
+  original_price: number | null;
   thumbnail_url: string | null;
   is_active: boolean;
   sold_count: number;
@@ -33,6 +35,7 @@ export default function Products({ filterCategory, embedded }: { filterCategory?
   const { user } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { warrantyDays } = useAppSettings();
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [buying, setBuying] = useState(false);
   const [purchaseResult, setPurchaseResult] = useState<{ content: string; name: string } | null>(null);
@@ -139,6 +142,7 @@ export default function Products({ filterCategory, embedded }: { filterCategory?
         onClose={() => setSelectedProduct(null)}
         onBuy={handleBuy}
         buying={buying}
+        warrantyDays={warrantyDays}
       />
 
       {/* Purchase Result Modal */}
@@ -213,7 +217,17 @@ function ProductCard({ product, onClick }: { product: Product; onClick: () => vo
           <p className="text-xs text-muted-foreground line-clamp-1">{product.note}</p>
         )}
         <div className="flex items-center justify-between pt-1">
-          <span className="text-primary font-bold text-sm">{fmtVnd(product.price)}</span>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {product.original_price && product.original_price > product.price && (
+              <span className="text-muted-foreground line-through text-xs">{fmtVnd(product.original_price)}</span>
+            )}
+            <span className="text-primary font-bold text-sm">{fmtVnd(product.price)}</span>
+            {product.original_price && product.original_price > product.price && (
+              <span className="text-[10px] font-semibold text-green-400">
+                -{Math.round((1 - product.price / product.original_price) * 100)}%
+              </span>
+            )}
+          </div>
           <span className={`text-xs ${product.stock_count! > 0 ? "text-green-400" : "text-destructive"}`}>
             {product.stock_count! > 0 ? `Còn ${product.stock_count}` : "Hết hàng"}
           </span>
@@ -229,11 +243,13 @@ function ProductDetailModal({
   onClose,
   onBuy,
   buying,
+  warrantyDays,
 }: {
   product: Product | null;
   onClose: () => void;
   onBuy: (p: Product) => void;
   buying: boolean;
+  warrantyDays: number;
 }) {
   return (
     <Dialog open={!!product} onOpenChange={onClose}>
@@ -270,7 +286,17 @@ function ProductDetailModal({
 
               {/* Price section */}
               <div className="flex items-center justify-between">
-                <span className="text-2xl font-bold text-primary">{fmtVnd(product.price)}</span>
+                <div>
+                  {product.original_price && product.original_price > product.price && (
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <span className="text-base text-muted-foreground line-through">{fmtVnd(product.original_price)}</span>
+                      <span className="text-xs font-semibold text-green-400 bg-green-500/10 px-1.5 py-0.5 rounded">
+                        Tiết kiệm {Math.round((1 - product.price / product.original_price) * 100)}%
+                      </span>
+                    </div>
+                  )}
+                  <span className="text-2xl font-bold text-primary">{fmtVnd(product.price)}</span>
+                </div>
                 <span
                   className={`text-sm font-medium px-2 py-1 rounded-full ${
                     product.stock_count! > 0
@@ -294,7 +320,7 @@ function ProductDetailModal({
                 </div>
                 <div className="flex items-center gap-2">
                   <Shield className="h-4 w-4 text-blue-400" />
-                  <span>Bảo hành 30 ngày</span>
+                  <span>Bảo hành {warrantyDays} ngày</span>
                 </div>
               </div>
 
