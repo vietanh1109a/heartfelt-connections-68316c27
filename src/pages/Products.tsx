@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
-import { ArrowLeft, ShoppingCart, Package, Gamepad2, Copy, Check } from "lucide-react";
+import { ArrowLeft, ShoppingCart, Package, Gamepad2, Copy, Check, Shield, Zap, MessageCircle, Flame, BadgeCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
@@ -23,6 +23,10 @@ interface Product {
 
 function fmtVnd(amount: number) {
   return amount.toLocaleString("vi-VN") + "đ";
+}
+
+function isHot(product: Product) {
+  return product.sold_count >= 3;
 }
 
 export default function Products({ filterCategory, embedded }: { filterCategory?: string; embedded?: boolean }) {
@@ -108,7 +112,6 @@ export default function Products({ filterCategory, embedded }: { filterCategory?
   const title = isGameKeys ? "Key Game" : "Sản phẩm";
   const icon = isGameKeys ? <Gamepad2 className="h-5 w-5 text-primary" /> : <Package className="h-5 w-5 text-primary" />;
 
-  // If embedded, render just the content without page wrapper/header
   const content = (
     <>
       {isLoading ? (
@@ -121,126 +124,30 @@ export default function Products({ filterCategory, embedded }: { filterCategory?
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
           {products.map((product) => (
-            <div
+            <ProductCard
               key={product.id}
+              product={product}
               onClick={() => setSelectedProduct(product)}
-              className="group cursor-pointer rounded-xl border border-border/40 bg-card/60 overflow-hidden hover:border-primary/30 hover:bg-card/80 transition-all"
-            >
-              <div className="aspect-square bg-secondary/30 relative overflow-hidden">
-                {product.thumbnail_url ? (
-                  <img
-                    src={product.thumbnail_url}
-                    alt={product.name}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                    loading="lazy"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <Package className="h-10 w-10 text-muted-foreground/30" />
-                  </div>
-                )}
-                {product.stock_count === 0 && (
-                  <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
-                    <span className="text-destructive font-bold text-sm">Hết hàng</span>
-                  </div>
-                )}
-              </div>
-              <div className="p-3 space-y-1.5">
-                <h3 className="text-sm font-semibold text-foreground line-clamp-2">{product.name}</h3>
-                {product.note && (
-                  <p className="text-xs text-muted-foreground line-clamp-1">{product.note}</p>
-                )}
-                <div className="flex items-center justify-between pt-1">
-                  <span className="text-primary font-bold text-sm">{fmtVnd(product.price)}</span>
-                  <span className={`text-xs ${product.stock_count! > 0 ? "text-green-400" : "text-destructive"}`}>
-                    {product.stock_count! > 0 ? `Còn ${product.stock_count}` : "Hết hàng"}
-                  </span>
-                </div>
-              </div>
-            </div>
+            />
           ))}
         </div>
       )}
 
       {/* Product Detail Modal */}
-      <Dialog open={!!selectedProduct} onOpenChange={() => setSelectedProduct(null)}>
-        <DialogContent className="max-w-md bg-card border-border/40">
-          {selectedProduct && (
-            <>
-              <DialogHeader>
-                <DialogTitle className="text-foreground">{selectedProduct.name}</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4">
-                {selectedProduct.thumbnail_url && (
-                  <div className="rounded-lg overflow-hidden aspect-video bg-secondary/30">
-                    <img
-                      src={selectedProduct.thumbnail_url}
-                      alt={selectedProduct.name}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                )}
-                <div className="flex items-center justify-between">
-                  <span className="text-2xl font-bold text-primary">{fmtVnd(selectedProduct.price)}</span>
-                  <span className={`text-sm font-medium px-2 py-1 rounded-full ${selectedProduct.stock_count! > 0 ? "bg-green-500/10 text-green-400 border border-green-500/20" : "bg-destructive/10 text-destructive border border-destructive/20"}`}>
-                    {selectedProduct.stock_count! > 0 ? `Còn ${selectedProduct.stock_count} sản phẩm` : "Hết hàng"}
-                  </span>
-                </div>
-                {selectedProduct.note && (
-                  <p className="text-sm text-muted-foreground">{selectedProduct.note}</p>
-                )}
-                {selectedProduct.description && (
-                  <div className="text-sm text-foreground/80 whitespace-pre-wrap border-t border-border/20 pt-3">
-                    {selectedProduct.description}
-                  </div>
-                )}
-                <Button
-                  className="w-full gap-2"
-                  disabled={buying || selectedProduct.stock_count === 0}
-                  onClick={() => handleBuy(selectedProduct)}
-                >
-                  <ShoppingCart className="h-4 w-4" />
-                  {buying ? "Đang xử lý..." : selectedProduct.stock_count === 0 ? "Hết hàng" : `Mua ngay - ${fmtVnd(selectedProduct.price)}`}
-                </Button>
-              </div>
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
+      <ProductDetailModal
+        product={selectedProduct}
+        onClose={() => setSelectedProduct(null)}
+        onBuy={handleBuy}
+        buying={buying}
+      />
 
       {/* Purchase Result Modal */}
-      <Dialog open={!!purchaseResult} onOpenChange={() => setPurchaseResult(null)}>
-        <DialogContent className="max-w-md bg-card border-border/40">
-          {purchaseResult && (
-            <>
-              <DialogHeader>
-                <DialogTitle className="text-foreground flex items-center gap-2">
-                  <Check className="h-5 w-5 text-green-400" />
-                  Mua thành công!
-                </DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4">
-                <p className="text-sm text-muted-foreground">Sản phẩm: <span className="text-foreground font-medium">{purchaseResult.name}</span></p>
-                <div className="bg-secondary/50 rounded-lg p-4 border border-border/40">
-                  <p className="text-xs text-muted-foreground mb-2">Nội dung sản phẩm:</p>
-                  <p className="text-sm text-foreground font-mono break-all select-all">{purchaseResult.content}</p>
-                </div>
-                <Button
-                  variant="outline"
-                  className="w-full gap-2"
-                  onClick={() => handleCopy(purchaseResult.content)}
-                >
-                  {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                  {copied ? "Đã copy" : "Copy nội dung"}
-                </Button>
-                <p className="text-xs text-muted-foreground text-center">
-                  ⚠️ Lưu lại nội dung này, bạn sẽ không thể xem lại sau khi đóng.
-                </p>
-              </div>
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
+      <PurchaseResultModal
+        result={purchaseResult}
+        onClose={() => setPurchaseResult(null)}
+        onCopy={handleCopy}
+        copied={copied}
+      />
     </>
   );
 
@@ -263,5 +170,229 @@ export default function Products({ filterCategory, embedded }: { filterCategory?
         {content}
       </main>
     </div>
+  );
+}
+
+/* ─── Product Card ─── */
+function ProductCard({ product, onClick }: { product: Product; onClick: () => void }) {
+  return (
+    <div
+      onClick={onClick}
+      className="group cursor-pointer rounded-2xl border border-border/40 bg-card/60 overflow-hidden hover:border-primary/40 hover:shadow-[0_8px_30px_hsl(var(--primary)/0.15)] transition-all duration-300"
+    >
+      <div className="aspect-square bg-secondary/30 relative overflow-hidden">
+        {product.thumbnail_url ? (
+          <img
+            src={product.thumbnail_url}
+            alt={product.name}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            loading="lazy"
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center">
+            <Package className="h-10 w-10 text-muted-foreground/30" />
+          </div>
+        )}
+        {/* Out of stock overlay with blur */}
+        {product.stock_count === 0 && (
+          <div className="absolute inset-0 backdrop-blur-sm bg-black/70 flex items-center justify-center">
+            <span className="text-destructive font-bold text-sm">Hết hàng</span>
+          </div>
+        )}
+        {/* HOT badge */}
+        {isHot(product) && product.stock_count! > 0 && (
+          <div className="absolute top-2 right-2 flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold text-white bg-gradient-to-r from-orange-500 to-amber-400 shadow-lg">
+            <Flame className="h-3 w-3" />
+            Bán chạy
+          </div>
+        )}
+      </div>
+      <div className="p-3 space-y-1.5">
+        <h3 className="text-sm font-semibold text-foreground line-clamp-2">{product.name}</h3>
+        {product.note && (
+          <p className="text-xs text-muted-foreground line-clamp-1">{product.note}</p>
+        )}
+        <div className="flex items-center justify-between pt-1">
+          <span className="text-primary font-bold text-sm">{fmtVnd(product.price)}</span>
+          <span className={`text-xs ${product.stock_count! > 0 ? "text-green-400" : "text-destructive"}`}>
+            {product.stock_count! > 0 ? `Còn ${product.stock_count}` : "Hết hàng"}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Product Detail Modal ─── */
+function ProductDetailModal({
+  product,
+  onClose,
+  onBuy,
+  buying,
+}: {
+  product: Product | null;
+  onClose: () => void;
+  onBuy: (p: Product) => void;
+  buying: boolean;
+}) {
+  return (
+    <Dialog open={!!product} onOpenChange={onClose}>
+      <DialogContent
+        className="max-w-md border-border/30 rounded-[20px] overflow-hidden"
+        style={{
+          background: "linear-gradient(145deg, hsl(0 0% 7%), hsl(0 0% 10%))",
+          boxShadow: "0 20px 60px rgba(0,0,0,0.5)",
+        }}
+      >
+        {product && (
+          <>
+            <DialogHeader>
+              <DialogTitle className="text-foreground flex items-center gap-2">
+                {product.name}
+                {isHot(product) && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold text-white bg-gradient-to-r from-orange-500 to-amber-400">
+                    <Flame className="h-3 w-3" />
+                    Bán chạy
+                  </span>
+                )}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              {product.thumbnail_url && (
+                <div className="rounded-xl overflow-hidden aspect-video bg-secondary/30">
+                  <img
+                    src={product.thumbnail_url}
+                    alt={product.name}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              )}
+
+              {/* Price section */}
+              <div className="flex items-center justify-between">
+                <span className="text-2xl font-bold text-primary">{fmtVnd(product.price)}</span>
+                <span
+                  className={`text-sm font-medium px-2 py-1 rounded-full ${
+                    product.stock_count! > 0
+                      ? "bg-green-500/10 text-green-400 border border-green-500/20"
+                      : "bg-destructive/10 text-destructive border border-destructive/20"
+                  }`}
+                >
+                  {product.stock_count! > 0 ? `Còn ${product.stock_count} sản phẩm` : "Hết hàng"}
+                </span>
+              </div>
+
+              {/* Features */}
+              <div className="flex flex-col gap-1.5 text-sm text-foreground/80">
+                <div className="flex items-center gap-2">
+                  <BadgeCheck className="h-4 w-4 text-green-400" />
+                  <span>Không share</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Zap className="h-4 w-4 text-amber-400" />
+                  <span>Giao ngay lập tức</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Shield className="h-4 w-4 text-blue-400" />
+                  <span>Bảo hành 30 ngày</span>
+                </div>
+              </div>
+
+              {product.note && (
+                <p className="text-sm text-muted-foreground">{product.note}</p>
+              )}
+              {product.description && (
+                <div className="text-sm text-foreground/80 whitespace-pre-wrap border-t border-border/20 pt-3">
+                  {product.description}
+                </div>
+              )}
+
+              {/* Buy button with glow */}
+              <Button
+                className="w-full gap-2 transition-all duration-200 hover:scale-[1.02] hover:shadow-[0_0_20px_hsl(var(--primary)/0.5)]"
+                disabled={buying || product.stock_count === 0}
+                onClick={() => onBuy(product)}
+              >
+                <ShoppingCart className="h-4 w-4" />
+                {buying
+                  ? "Đang xử lý..."
+                  : product.stock_count === 0
+                  ? "Hết hàng"
+                  : `Mua ngay – ${fmtVnd(product.price)}`}
+              </Button>
+
+              {/* Trust row */}
+              <div className="flex items-center justify-center gap-4 text-[11px] text-muted-foreground pt-1">
+                <span className="flex items-center gap-1">
+                  <Shield className="h-3 w-3" /> Thanh toán an toàn
+                </span>
+                <span className="flex items-center gap-1">
+                  <Zap className="h-3 w-3" /> Giao ngay
+                </span>
+                <span className="flex items-center gap-1">
+                  <MessageCircle className="h-3 w-3" /> Hỗ trợ 24/7
+                </span>
+              </div>
+            </div>
+          </>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/* ─── Purchase Result Modal ─── */
+function PurchaseResultModal({
+  result,
+  onClose,
+  onCopy,
+  copied,
+}: {
+  result: { content: string; name: string } | null;
+  onClose: () => void;
+  onCopy: (text: string) => void;
+  copied: boolean;
+}) {
+  return (
+    <Dialog open={!!result} onOpenChange={onClose}>
+      <DialogContent
+        className="max-w-md border-border/30 rounded-[20px]"
+        style={{
+          background: "linear-gradient(145deg, hsl(0 0% 7%), hsl(0 0% 10%))",
+          boxShadow: "0 20px 60px rgba(0,0,0,0.5)",
+        }}
+      >
+        {result && (
+          <>
+            <DialogHeader>
+              <DialogTitle className="text-foreground flex items-center gap-2">
+                <Check className="h-5 w-5 text-green-400" />
+                Mua thành công!
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Sản phẩm: <span className="text-foreground font-medium">{result.name}</span>
+              </p>
+              <div className="bg-secondary/50 rounded-xl p-4 border border-border/40">
+                <p className="text-xs text-muted-foreground mb-2">Nội dung sản phẩm:</p>
+                <p className="text-sm text-foreground font-mono break-all select-all">{result.content}</p>
+              </div>
+              <Button
+                variant="outline"
+                className="w-full gap-2"
+                onClick={() => onCopy(result.content)}
+              >
+                {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                {copied ? "Đã copy" : "Copy nội dung"}
+              </Button>
+              <p className="text-xs text-muted-foreground text-center">
+                ⚠️ Lưu lại nội dung này, bạn sẽ không thể xem lại sau khi đóng.
+              </p>
+            </div>
+          </>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 }
