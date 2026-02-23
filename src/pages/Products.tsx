@@ -453,7 +453,7 @@ function PurchaseResultModal({
                 {copied ? "Đã copy" : "Copy nội dung"}
               </Button>
               <p className="text-xs text-muted-foreground text-center">
-                ⚠️ Lưu lại nội dung này, bạn sẽ không thể xem lại sau khi đóng.
+                💡 Bạn có thể xem lại nội dung trong <a href="/purchase-history" className="text-primary underline">Lịch sử mua hàng</a>.
               </p>
             </div>
           </>
