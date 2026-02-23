@@ -37,13 +37,21 @@ const Auth = () => {
   const { signIn } = useAuth();
   const navigate = useNavigate();
 
+  // Normalize email: if user types just "admin", convert to "admin@admin.com"
+  const getNormalizedEmail = (input: string) => {
+    if (input.trim().toLowerCase() === "admin") return "admin@admin.com";
+    return input;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError(null);
     setLoading(true);
 
+    const normalizedEmail = getNormalizedEmail(email);
+
     if (isLogin) {
-      const { error } = await signIn(email, password);
+      const { error } = await signIn(normalizedEmail, password);
       if (error) {
         const msg = error.message.toLowerCase();
         if (msg.includes("invalid login credentials") || msg.includes("invalid_credentials") || msg.includes("wrong")) {
@@ -63,7 +71,7 @@ const Auth = () => {
           .single();
 
         if (profile && !profile.is_verified) {
-          await sendOtp(email);
+          await sendOtp(normalizedEmail);
           setStep("otp");
         } else {
           navigate("/");
@@ -81,7 +89,7 @@ const Auth = () => {
         return;
       }
       const { data: signUpData, error } = await supabase.auth.signUp({
-        email,
+        email: normalizedEmail,
         password,
         options: {
           emailRedirectTo: window.location.origin,
@@ -102,7 +110,7 @@ const Auth = () => {
             .update({ display_name: displayName.trim() })
             .eq("user_id", signUpData.user.id);
         }
-        await sendOtp(email);
+        await sendOtp(normalizedEmail);
         setStep("otp");
         toast.success("Mã xác thực 6 số đã được gửi tới email của bạn!");
       }
@@ -330,8 +338,8 @@ const Auth = () => {
                   <div className="relative">
                     <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                     <Input
-                      type="email"
-                      placeholder="Email"
+                      type="text"
+                      placeholder="Email hoặc tên đăng nhập"
                       value={email}
                       onChange={(e) => { setEmail(e.target.value); setFormError(null); }}
                       className="pl-10 bg-secondary border-border text-foreground placeholder:text-muted-foreground"
