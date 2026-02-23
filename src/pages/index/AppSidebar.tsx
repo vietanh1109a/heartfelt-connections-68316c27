@@ -159,40 +159,52 @@ const AppSidebar = memo(({
           )}
         </nav>
 
-        {/* User section at bottom — only show when logged in */}
-        {userEmail && (
-          <div className="border-t border-sidebar-border px-2 py-3">
-            <div className={`flex items-center gap-2.5 px-2 py-2 ${collapsed ? "justify-center" : ""}`}>
-              <div className="h-8 w-8 rounded-full bg-sidebar-primary flex items-center justify-center shrink-0">
-                <span className="text-sidebar-primary-foreground font-bold text-sm">
-                  {(profile?.display_name || userEmail || "U").charAt(0).toUpperCase()}
-                </span>
-              </div>
-              {!collapsed && (
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs font-semibold text-sidebar-foreground truncate">
-                    {profile?.display_name || "User"}
-                  </p>
-                  <p className="text-[10px] text-muted-foreground truncate">{userEmail}</p>
-                  {isVip && (
-                    <span className="text-[10px] font-bold text-yellow-500 flex items-center gap-0.5">
-                      <Crown className="h-2.5 w-2.5" /> VIP
-                    </span>
-                  )}
+        {/* User section at bottom */}
+        <div className="border-t border-sidebar-border px-2 py-3">
+          {userEmail ? (
+            <>
+              <div className={`flex items-center gap-2.5 px-2 py-2 ${collapsed ? "justify-center" : ""}`}>
+                <div className="h-8 w-8 rounded-full bg-sidebar-primary flex items-center justify-center shrink-0">
+                  <span className="text-sidebar-primary-foreground font-bold text-sm">
+                    {(profile?.display_name || userEmail || "U").charAt(0).toUpperCase()}
+                  </span>
                 </div>
-              )}
-            </div>
+                {!collapsed && (
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-semibold text-sidebar-foreground truncate">
+                      {profile?.display_name || "User"}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground truncate">{userEmail}</p>
+                    {isVip && (
+                      <span className="text-[10px] font-bold text-yellow-500 flex items-center gap-0.5">
+                        <Crown className="h-2.5 w-2.5" /> VIP
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+              <button
+                onClick={onSignOut}
+                className={`w-full flex items-center gap-3 rounded-lg text-sm font-medium text-destructive/70 hover:text-destructive hover:bg-destructive/10 transition-all mt-1 ${
+                  collapsed ? "justify-center px-2 py-2" : "px-3 py-2"
+                }`}
+              >
+                <LogOut className="h-4 w-4 shrink-0" />
+                {!collapsed && <span>Đăng xuất</span>}
+              </button>
+            </>
+          ) : (
             <button
-              onClick={onSignOut}
-              className={`w-full flex items-center gap-3 rounded-lg text-sm font-medium text-destructive/70 hover:text-destructive hover:bg-destructive/10 transition-all mt-1 ${
-                collapsed ? "justify-center px-2 py-2" : "px-3 py-2"
+              onClick={() => navigate("/auth")}
+              className={`w-full flex items-center gap-3 rounded-lg text-sm font-medium text-sidebar-primary hover:bg-sidebar-accent/50 transition-all ${
+                collapsed ? "justify-center px-2 py-2.5" : "px-3 py-2.5"
               }`}
             >
-              <LogOut className="h-4 w-4 shrink-0" />
-              {!collapsed && <span>Đăng xuất</span>}
+              <LogIn className="h-4 w-4 shrink-0" />
+              {!collapsed && <span>Đăng nhập</span>}
             </button>
-          </div>
-        )}
+          )}
+        </div>
       </aside>
     </>
   );
