@@ -427,6 +427,7 @@ export type Database = {
           bonus_expires_at: string | null
           created_at: string
           display_name: string | null
+          free_views_left: number
           id: string
           is_verified: boolean
           switch_count: number
@@ -434,6 +435,7 @@ export type Database = {
           updated_at: string
           user_id: string
           vip_expires_at: string | null
+          vip_views_left: number
         }
         Insert: {
           balance?: number
@@ -441,6 +443,7 @@ export type Database = {
           bonus_expires_at?: string | null
           created_at?: string
           display_name?: string | null
+          free_views_left?: number
           id?: string
           is_verified?: boolean
           switch_count?: number
@@ -448,6 +451,7 @@ export type Database = {
           updated_at?: string
           user_id: string
           vip_expires_at?: string | null
+          vip_views_left?: number
         }
         Update: {
           balance?: number
@@ -455,6 +459,7 @@ export type Database = {
           bonus_expires_at?: string | null
           created_at?: string
           display_name?: string | null
+          free_views_left?: number
           id?: string
           is_verified?: boolean
           switch_count?: number
@@ -462,6 +467,7 @@ export type Database = {
           updated_at?: string
           user_id?: string
           vip_expires_at?: string | null
+          vip_views_left?: number
         }
         Relationships: []
       }
