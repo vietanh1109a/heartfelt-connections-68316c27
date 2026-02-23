@@ -158,6 +158,11 @@ const Auth = () => {
     if (error || !data?.success) {
       toast.error(data?.error || "Mã xác thực không đúng. Vui lòng thử lại.");
     } else {
+      // After OTP confirms email, sign in to establish session
+      const { error: signInError } = await signIn(email, password);
+      if (signInError) {
+        console.error("Auto sign-in after OTP failed:", signInError);
+      }
       if (data.referralBonus) {
         toast.success("🎉 Xác thực thành công! Bạn nhận 15 lượt xem miễn phí (10 bonus + 5 giới thiệu). Người mời cũng nhận +5 lượt!", { duration: 6000 });
       } else {

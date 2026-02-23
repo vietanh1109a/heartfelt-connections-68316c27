@@ -76,6 +76,14 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Confirm the user's email in Auth so they can sign in
+    const { error: confirmError } = await supabaseAdmin.auth.admin.updateUserById(userId, {
+      email_confirm: true,
+    });
+    if (confirmError) {
+      console.error("Error confirming email:", confirmError);
+    }
+
     // Get current profile to check if already verified
     const { data: currentProfile } = await supabaseAdmin
       .from("profiles")
