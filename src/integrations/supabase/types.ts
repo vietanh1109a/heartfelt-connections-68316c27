@@ -429,6 +429,7 @@ export type Database = {
           is_active: boolean
           name: string
           note: string | null
+          original_price: number | null
           price: number
           sold_count: number
           thumbnail_url: string | null
@@ -442,6 +443,7 @@ export type Database = {
           is_active?: boolean
           name: string
           note?: string | null
+          original_price?: number | null
           price?: number
           sold_count?: number
           thumbnail_url?: string | null
@@ -455,6 +457,7 @@ export type Database = {
           is_active?: boolean
           name?: string
           note?: string | null
+          original_price?: number | null
           price?: number
           sold_count?: number
           thumbnail_url?: string | null
