@@ -14,6 +14,290 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_audit_logs: {
+        Row: {
+          action: string
+          admin_user_id: string
+          created_at: string
+          details: Json | null
+          id: string
+          target_user_id: string | null
+        }
+        Insert: {
+          action: string
+          admin_user_id: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          target_user_id?: string | null
+        }
+        Update: {
+          action?: string
+          admin_user_id?: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          target_user_id?: string | null
+        }
+        Relationships: []
+      }
+      app_settings: {
+        Row: {
+          description: string | null
+          id: string
+          updated_at: string
+          value: string
+        }
+        Insert: {
+          description?: string | null
+          id: string
+          updated_at?: string
+          value: string
+        }
+        Update: {
+          description?: string | null
+          id?: string
+          updated_at?: string
+          value?: string
+        }
+        Relationships: []
+      }
+      cookie_reports: {
+        Row: {
+          created_at: string
+          details: string | null
+          id: string
+          reason: string
+          resolved_at: string | null
+          resolved_by: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          details?: string | null
+          id?: string
+          reason: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          details?: string | null
+          id?: string
+          reason?: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      cookie_stock: {
+        Row: {
+          cookie_data: string
+          id: string
+          is_active: boolean
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          cookie_data: string
+          id?: string
+          is_active?: boolean
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          cookie_data?: string
+          id?: string
+          is_active?: boolean
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      moderator_permissions: {
+        Row: {
+          can_edit: boolean
+          can_view: boolean
+          id: string
+          tab: string
+          updated_at: string
+        }
+        Insert: {
+          can_edit?: boolean
+          can_view?: boolean
+          id?: string
+          tab: string
+          updated_at?: string
+        }
+        Update: {
+          can_edit?: boolean
+          can_view?: boolean
+          id?: string
+          tab?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      netflix_accounts: {
+        Row: {
+          assigned_at: string | null
+          assigned_to: string | null
+          created_at: string
+          email: string
+          expires_at: string | null
+          id: string
+          is_assigned: boolean
+          password: string
+          plan_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          assigned_at?: string | null
+          assigned_to?: string | null
+          created_at?: string
+          email: string
+          expires_at?: string | null
+          id?: string
+          is_assigned?: boolean
+          password: string
+          plan_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          assigned_at?: string | null
+          assigned_to?: string | null
+          created_at?: string
+          email?: string
+          expires_at?: string | null
+          id?: string
+          is_assigned?: boolean
+          password?: string
+          plan_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "netflix_accounts_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "netflix_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      netflix_plans: {
+        Row: {
+          created_at: string
+          description: string | null
+          duration_months: number
+          id: string
+          is_active: boolean
+          name: string
+          price: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          duration_months: number
+          id?: string
+          is_active?: boolean
+          name: string
+          price: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          duration_months?: number
+          id?: string
+          is_active?: boolean
+          name?: string
+          price?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      otp_codes: {
+        Row: {
+          code: string
+          created_at: string
+          email: string
+          expires_at: string
+          id: string
+          used: boolean
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          email: string
+          expires_at: string
+          id?: string
+          used?: boolean
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          email?: string
+          expires_at?: string
+          id?: string
+          used?: boolean
+        }
+        Relationships: []
+      }
+      plan_purchases: {
+        Row: {
+          account_id: string | null
+          amount_paid: number
+          created_at: string
+          id: string
+          plan_id: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          account_id?: string | null
+          amount_paid: number
+          created_at?: string
+          id?: string
+          plan_id: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          account_id?: string | null
+          amount_paid?: number
+          created_at?: string
+          id?: string
+          plan_id?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plan_purchases_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "netflix_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plan_purchases_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "netflix_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       product_items: {
         Row: {
           content: string
@@ -136,6 +420,167 @@ export type Database = {
         }
         Relationships: []
       }
+      profiles: {
+        Row: {
+          balance: number
+          bonus_balance: number
+          bonus_expires_at: string | null
+          created_at: string
+          display_name: string | null
+          id: string
+          is_verified: boolean
+          switch_count: number
+          switch_reset_at: string | null
+          updated_at: string
+          user_id: string
+          vip_expires_at: string | null
+        }
+        Insert: {
+          balance?: number
+          bonus_balance?: number
+          bonus_expires_at?: string | null
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          is_verified?: boolean
+          switch_count?: number
+          switch_reset_at?: string | null
+          updated_at?: string
+          user_id: string
+          vip_expires_at?: string | null
+        }
+        Update: {
+          balance?: number
+          bonus_balance?: number
+          bonus_expires_at?: string | null
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          is_verified?: boolean
+          switch_count?: number
+          switch_reset_at?: string | null
+          updated_at?: string
+          user_id?: string
+          vip_expires_at?: string | null
+        }
+        Relationships: []
+      }
+      referral_logs: {
+        Row: {
+          bonus_amount: number
+          created_at: string
+          id: string
+          referred_user_id: string
+          referrer_user_id: string
+        }
+        Insert: {
+          bonus_amount?: number
+          created_at?: string
+          id?: string
+          referred_user_id: string
+          referrer_user_id: string
+        }
+        Update: {
+          bonus_amount?: number
+          created_at?: string
+          id?: string
+          referred_user_id?: string
+          referrer_user_id?: string
+        }
+        Relationships: []
+      }
+      transactions: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          memo: string | null
+          type: Database["public"]["Enums"]["transaction_type"]
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          id?: string
+          memo?: string | null
+          type: Database["public"]["Enums"]["transaction_type"]
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          memo?: string | null
+          type?: Database["public"]["Enums"]["transaction_type"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_bans: {
+        Row: {
+          banned_at: string
+          banned_by: string
+          created_at: string
+          expires_at: string | null
+          id: string
+          is_permanent: boolean
+          reason: string
+          user_id: string
+        }
+        Insert: {
+          banned_at?: string
+          banned_by: string
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          is_permanent?: boolean
+          reason: string
+          user_id: string
+        }
+        Update: {
+          banned_at?: string
+          banned_by?: string
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          is_permanent?: boolean
+          reason?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_cookie_assignment: {
+        Row: {
+          assigned_at: string
+          cookie_id: string
+          id: string
+          slot: number
+          user_id: string
+        }
+        Insert: {
+          assigned_at?: string
+          cookie_id: string
+          id?: string
+          slot?: number
+          user_id: string
+        }
+        Update: {
+          assigned_at?: string
+          cookie_id?: string
+          id?: string
+          slot?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_cookie_assignment_cookie_id_fkey"
+            columns: ["cookie_id"]
+            isOneToOne: false
+            referencedRelation: "cookie_stock"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -157,11 +602,107 @@ export type Database = {
         }
         Relationships: []
       }
+      vip_plans: {
+        Row: {
+          created_at: string
+          description: string | null
+          duration_days: number
+          id: string
+          is_active: boolean
+          name: string
+          price: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          duration_days: number
+          id?: string
+          is_active?: boolean
+          name: string
+          price: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          duration_days?: number
+          id?: string
+          is_active?: boolean
+          name?: string
+          price?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      vip_purchases: {
+        Row: {
+          amount_paid: number
+          created_at: string
+          granted_by: string | null
+          id: string
+          user_id: string
+          vip_expires_at: string
+          vip_plan_id: string | null
+        }
+        Insert: {
+          amount_paid: number
+          created_at?: string
+          granted_by?: string | null
+          id?: string
+          user_id: string
+          vip_expires_at: string
+          vip_plan_id?: string | null
+        }
+        Update: {
+          amount_paid?: number
+          created_at?: string
+          granted_by?: string | null
+          id?: string
+          user_id?: string
+          vip_expires_at?: string
+          vip_plan_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vip_purchases_vip_plan_id_fkey"
+            columns: ["vip_plan_id"]
+            isOneToOne: false
+            referencedRelation: "vip_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      admin_adjust_balance: {
+        Args: { delta: number; target_user_id: string }
+        Returns: number
+      }
+      assign_cookies_to_user: {
+        Args: { desired_count: number; target_user_id: string }
+        Returns: undefined
+      }
+      expire_bonus_if_needed: {
+        Args: { target_user_id: string }
+        Returns: undefined
+      }
+      get_effective_balance: {
+        Args: { target_user_id: string }
+        Returns: number
+      }
+      get_netflix_stock_by_plan: {
+        Args: never
+        Returns: {
+          count: number
+          plan_id: string
+        }[]
+      }
+      get_netflix_stock_count: { Args: never; Returns: number }
+      get_user_id_by_email: { Args: { lookup_email: string }; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -169,9 +710,20 @@ export type Database = {
         }
         Returns: boolean
       }
+      increment_balance: {
+        Args: { delta: number; target_user_id: string }
+        Returns: undefined
+      }
+      increment_bonus_balance: {
+        Args: { delta: number; expires_at?: string; target_user_id: string }
+        Returns: undefined
+      }
+      is_owner_profile: { Args: { profile_user_id: string }; Returns: boolean }
+      user_has_sufficient_balance: { Args: never; Returns: boolean }
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"
+      transaction_type: "deposit" | "usage"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -300,6 +852,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "moderator", "user"],
+      transaction_type: ["deposit", "usage"],
     },
   },
 } as const
