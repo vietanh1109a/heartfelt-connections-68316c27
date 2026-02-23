@@ -4,13 +4,13 @@ import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
-import { CheckCircle2, Crown, Play, Package, Gamepad2 } from "lucide-react";
+import { CheckCircle2, Crown, Menu } from "lucide-react";
 import Products from "./Products";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useIndexData, useCookieActions, MIN_EXTENSION_VERSION, compareVersions } from "@/hooks/useIndexData";
 import BanOverlay from "./index/BanOverlay";
-import PageHeader from "./index/PageHeader";
+import AppSidebar from "./index/AppSidebar";
 import WatchSection from "./index/WatchSection";
 import SidePanel from "./index/SidePanel";
 import PlanSelector from "./index/PlanSelector";
@@ -40,6 +40,7 @@ const Index = () => {
   const [showVipPlans, setShowVipPlans] = useState(false);
   const [showReportDialog, setShowReportDialog] = useState(false);
   const [showDeposit, setShowDeposit] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => window.innerWidth < 768);
 
   // TV state
   const [tvCode, setTvCode] = useState("");
@@ -266,7 +267,7 @@ const Index = () => {
     <>
       {activeBan && <BanOverlay ban={activeBan} onSignOut={signOut} />}
 
-      <div className="min-h-screen bg-background relative">
+      <div className="min-h-screen bg-background relative flex">
         {/* Background gradient */}
         <div className="fixed inset-0 z-0 pointer-events-none" aria-hidden="true">
           <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.06] via-background to-background" />
@@ -274,7 +275,10 @@ const Index = () => {
           <div className="absolute bottom-0 left-0 w-[400px] h-[400px] rounded-full bg-primary/[0.03] blur-[100px]" />
         </div>
 
-        <PageHeader
+        {/* Sidebar */}
+        <AppSidebar
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
           profile={profile}
           userEmail={user?.email}
           isAdmin={isAdmin}
@@ -282,106 +286,115 @@ const Index = () => {
           extensionVersion={extensionVersion}
           extensionOutdated={extensionOutdated}
           onShowExtension={() => setShowExtensionModal(true)}
-          onSignOut={signOut}
           onShowDeposit={() => setShowDeposit(true)}
+          onSignOut={signOut}
+          collapsed={sidebarCollapsed}
+          onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
         />
 
-        {/* Tabs */}
-        <div className="max-w-5xl mx-auto px-4 md:px-6 pt-4 relative z-10">
-          <div className="flex gap-1 bg-muted/50 p-1 rounded-lg w-fit">
-            {[
-              { key: "netflix" as const, label: "Netflix", icon: Play },
-              { key: "products" as const, label: "Sản phẩm", icon: Package },
-              { key: "game_keys" as const, label: "Key Game", icon: Gamepad2 },
-            ].map(({ key, label, icon: Icon }) => (
-              <button
-                key={key}
-                onClick={() => setActiveTab(key)}
-                className={`flex items-center gap-1.5 px-4 py-2 rounded-md text-sm font-medium transition-all ${
-                  activeTab === key
-                    ? "bg-background text-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                <Icon className="h-4 w-4" />
-                {label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Tab Content */}
-        <main className="max-w-5xl mx-auto px-4 md:px-6 pb-16 pt-6 relative z-10">
-          {activeTab === "netflix" && (
-            <>
-              <section className="text-center pb-6">
-                <motion.h2
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5 }}
-                  className="text-3xl md:text-4xl font-bold text-foreground"
-                >
-                  Xin chào, {profile?.display_name || "bạn"} 👋
-                </motion.h2>
-                <motion.p
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.15, duration: 0.4 }}
-                  className="text-muted-foreground mt-2 text-sm"
-                >
-                  Sẵn sàng xem phim chưa?
-                </motion.p>
-              </section>
-              <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
-                <div className="lg:col-span-3">
-                  <WatchSection
-                    user={user}
-                    profile={profile}
-                    isVip={isVip}
-                    maxSwitches={maxSwitches}
-                    switchesLeft={switchesLeft}
-                    extensionVersion={extensionVersion}
-                    setExtensionVersion={setExtensionVersion}
-                    extensionOutdated={extensionOutdated}
-                    onShowExtensionModal={() => setShowExtensionModal(true)}
-                    onShowWatchModal={() => setShowWatchModal(true)}
-                    onShowReportDialog={() => setShowReportDialog(true)}
-                    tvCode={tvCode}
-                    setTvCode={setTvCode}
-                    onShowTvConfirm={() => setShowTvConfirm(true)}
-                  />
-                </div>
-                <div className="lg:col-span-2">
-                  <SidePanel
-                    profile={profile}
-                    isVip={isVip}
-                    vipExpiresAt={vipExpiresAt}
-                    maxSwitches={maxSwitches}
-                    switchesLeft={switchesLeft}
-                    activeCookieCount={activeCookieCount}
-                    freeViews={(profile as any)?.free_views_left ?? 0}
-                    vipViews={(profile as any)?.vip_views_left ?? 0}
-                    onShowInfo={() => setShowInfoModal(true)}
-                    onShowVipPlans={() => setShowVipPlans(true)}
-                    onShowReportDialog={() => setShowReportDialog(true)}
-                    onShowDeposit={() => setShowDeposit(true)}
-                    isGuest={!user}
-                    extensionVersion={extensionVersion}
-                    onShowExtensionModal={() => setShowExtensionModal(true)}
-                  />
-                </div>
+        {/* Main area */}
+        <div className={`flex-1 transition-all duration-300 relative z-10 ${sidebarCollapsed ? "md:ml-16" : "md:ml-[220px]"}`}>
+          {/* Topbar */}
+          <header className="flex items-center justify-between px-4 md:px-8 py-3 border-b border-border/30">
+            <button
+              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+              className="p-2 rounded-lg hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
+            >
+              <Menu className="h-5 w-5" />
+            </button>
+            <div className="flex items-center gap-3">
+              {isVip && (
+                <span className="text-xs font-bold text-yellow-500 flex items-center gap-1 bg-yellow-500/10 px-2.5 py-1 rounded-full border border-yellow-500/20">
+                  <Crown className="h-3 w-3" /> VIP
+                </span>
+              )}
+              <div className="text-right hidden sm:block">
+                <p className="text-sm font-medium text-foreground">{profile?.display_name || "User"}</p>
+                <p className="text-[10px] text-muted-foreground">
+                  Số dư: {((profile?.balance ?? 0) + (profile?.bonus_balance ?? 0)).toLocaleString("vi-VN")}đ
+                </p>
               </div>
-            </>
-          )}
+              <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center">
+                <span className="text-primary-foreground font-bold text-sm">
+                  {(profile?.display_name || user?.email || "U").charAt(0).toUpperCase()}
+                </span>
+              </div>
+            </div>
+          </header>
 
-          {activeTab === "products" && (
-            <Products embedded />
-          )}
+          {/* Tab Content */}
+          <main className="max-w-5xl mx-auto px-4 md:px-8 pb-16 pt-6">
+            {activeTab === "netflix" && (
+              <>
+                <section className="text-center pb-6">
+                  <motion.h2
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5 }}
+                    className="text-3xl md:text-4xl font-bold text-foreground"
+                  >
+                    Xin chào, {profile?.display_name || "bạn"} 👋
+                  </motion.h2>
+                  <motion.p
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.15, duration: 0.4 }}
+                    className="text-muted-foreground mt-2 text-sm"
+                  >
+                    Sẵn sàng xem phim chưa?
+                  </motion.p>
+                </section>
+                <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+                  <div className="lg:col-span-3">
+                    <WatchSection
+                      user={user}
+                      profile={profile}
+                      isVip={isVip}
+                      maxSwitches={maxSwitches}
+                      switchesLeft={switchesLeft}
+                      extensionVersion={extensionVersion}
+                      setExtensionVersion={setExtensionVersion}
+                      extensionOutdated={extensionOutdated}
+                      onShowExtensionModal={() => setShowExtensionModal(true)}
+                      onShowWatchModal={() => setShowWatchModal(true)}
+                      onShowReportDialog={() => setShowReportDialog(true)}
+                      tvCode={tvCode}
+                      setTvCode={setTvCode}
+                      onShowTvConfirm={() => setShowTvConfirm(true)}
+                    />
+                  </div>
+                  <div className="lg:col-span-2">
+                    <SidePanel
+                      profile={profile}
+                      isVip={isVip}
+                      vipExpiresAt={vipExpiresAt}
+                      maxSwitches={maxSwitches}
+                      switchesLeft={switchesLeft}
+                      activeCookieCount={activeCookieCount}
+                      freeViews={(profile as any)?.free_views_left ?? 0}
+                      vipViews={(profile as any)?.vip_views_left ?? 0}
+                      onShowInfo={() => setShowInfoModal(true)}
+                      onShowVipPlans={() => setShowVipPlans(true)}
+                      onShowReportDialog={() => setShowReportDialog(true)}
+                      onShowDeposit={() => setShowDeposit(true)}
+                      isGuest={!user}
+                      extensionVersion={extensionVersion}
+                      onShowExtensionModal={() => setShowExtensionModal(true)}
+                    />
+                  </div>
+                </div>
+              </>
+            )}
 
-          {activeTab === "game_keys" && (
-            <Products filterCategory="game_key" embedded />
-          )}
-        </main>
+            {activeTab === "products" && (
+              <Products embedded />
+            )}
+
+            {activeTab === "game_keys" && (
+              <Products filterCategory="game_key" embedded />
+            )}
+          </main>
+        </div>
       </div>
 
       {/* Deposit Modal */}
