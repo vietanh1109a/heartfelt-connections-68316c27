@@ -119,6 +119,39 @@ export type Database = {
         }
         Relationships: []
       }
+      ctv_registrations: {
+        Row: {
+          bank_info: string | null
+          contact_info: string
+          created_at: string
+          display_name: string
+          id: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          bank_info?: string | null
+          contact_info: string
+          created_at?: string
+          display_name: string
+          id?: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          bank_info?: string | null
+          contact_info?: string
+          created_at?: string
+          display_name?: string
+          id?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       deposits: {
         Row: {
           amount: number
