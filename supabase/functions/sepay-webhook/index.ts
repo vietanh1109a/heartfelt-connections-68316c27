@@ -159,26 +159,15 @@ Deno.serve(async (req) => {
       throw updateDepositError;
     }
 
-    // Credit balance using RPC (security definer function)
-    const { error: balanceError } = await supabase.rpc("credit_user_balance", {
-      p_user_id: deposit.user_id,
-      p_amount: deposit.amount,
+    // Credit balance using existing RPC
+    const { error: balanceError } = await supabase.rpc("increment_balance", {
+      target_user_id: deposit.user_id,
+      delta: deposit.amount,
     });
 
     if (balanceError) {
-      // Fallback: direct upsert on profiles.balance
-      console.warn("RPC credit_user_balance failed, using fallback:", balanceError.message);
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("balance")
-        .eq("user_id", deposit.user_id)
-        .single();
-
-      const newBalance = (profile?.balance ?? 0) + deposit.amount;
-      await supabase
-        .from("profiles")
-        .update({ balance: newBalance })
-        .eq("user_id", deposit.user_id);
+      console.error("increment_balance failed:", balanceError.message);
+      throw balanceError;
     }
 
     // Insert into transactions ledger
