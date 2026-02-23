@@ -119,6 +119,273 @@ export type Database = {
         }
         Relationships: []
       }
+      ctv_listing_items: {
+        Row: {
+          content: string
+          created_at: string
+          ctv_user_id: string
+          expiry_date: string | null
+          id: string
+          is_sold: boolean
+          listing_id: string
+          sold_at: string | null
+          sold_to: string | null
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          ctv_user_id: string
+          expiry_date?: string | null
+          id?: string
+          is_sold?: boolean
+          listing_id: string
+          sold_at?: string | null
+          sold_to?: string | null
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          ctv_user_id?: string
+          expiry_date?: string | null
+          id?: string
+          is_sold?: boolean
+          listing_id?: string
+          sold_at?: string | null
+          sold_to?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ctv_listing_items_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "ctv_listings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ctv_listings: {
+        Row: {
+          category: string
+          created_at: string
+          ctv_user_id: string
+          description: string | null
+          id: string
+          price: number
+          refund_count: number
+          status: string
+          title: string
+          total_sold: number
+          updated_at: string
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          ctv_user_id: string
+          description?: string | null
+          id?: string
+          price: number
+          refund_count?: number
+          status?: string
+          title: string
+          total_sold?: number
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          ctv_user_id?: string
+          description?: string | null
+          id?: string
+          price?: number
+          refund_count?: number
+          status?: string
+          title?: string
+          total_sold?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ctv_listings_ctv_user_id_fkey"
+            columns: ["ctv_user_id"]
+            isOneToOne: false
+            referencedRelation: "ctv_profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      ctv_orders: {
+        Row: {
+          buyer_id: string
+          created_at: string
+          ctv_earning: number
+          ctv_user_id: string
+          earnings_released: boolean
+          id: string
+          listing_id: string
+          listing_item_id: string | null
+          platform_fee: number
+          price: number
+          release_at: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          buyer_id: string
+          created_at?: string
+          ctv_earning?: number
+          ctv_user_id: string
+          earnings_released?: boolean
+          id?: string
+          listing_id: string
+          listing_item_id?: string | null
+          platform_fee?: number
+          price: number
+          release_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          buyer_id?: string
+          created_at?: string
+          ctv_earning?: number
+          ctv_user_id?: string
+          earnings_released?: boolean
+          id?: string
+          listing_id?: string
+          listing_item_id?: string | null
+          platform_fee?: number
+          price?: number
+          release_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ctv_orders_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "ctv_listings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ctv_orders_listing_item_id_fkey"
+            columns: ["listing_item_id"]
+            isOneToOne: false
+            referencedRelation: "ctv_listing_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ctv_payout_requests: {
+        Row: {
+          amount: number
+          bank_account: string
+          bank_holder: string
+          bank_name: string
+          created_at: string
+          ctv_user_id: string
+          id: string
+          note: string | null
+          processed_at: string | null
+          processed_by: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          bank_account: string
+          bank_holder: string
+          bank_name: string
+          created_at?: string
+          ctv_user_id: string
+          id?: string
+          note?: string | null
+          processed_at?: string | null
+          processed_by?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          bank_account?: string
+          bank_holder?: string
+          bank_name?: string
+          created_at?: string
+          ctv_user_id?: string
+          id?: string
+          note?: string | null
+          processed_at?: string | null
+          processed_by?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ctv_payout_requests_ctv_user_id_fkey"
+            columns: ["ctv_user_id"]
+            isOneToOne: false
+            referencedRelation: "ctv_profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      ctv_profiles: {
+        Row: {
+          available_balance: number
+          bank_account: string | null
+          bank_holder: string | null
+          bank_name: string | null
+          commission_rate: number
+          contact_info: string | null
+          created_at: string
+          display_name: string
+          id: string
+          pending_balance: number
+          refund_count: number
+          status: string
+          total_orders: number
+          total_sales: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          available_balance?: number
+          bank_account?: string | null
+          bank_holder?: string | null
+          bank_name?: string | null
+          commission_rate?: number
+          contact_info?: string | null
+          created_at?: string
+          display_name: string
+          id?: string
+          pending_balance?: number
+          refund_count?: number
+          status?: string
+          total_orders?: number
+          total_sales?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          available_balance?: number
+          bank_account?: string | null
+          bank_holder?: string | null
+          bank_name?: string | null
+          commission_rate?: number
+          contact_info?: string | null
+          created_at?: string
+          display_name?: string
+          id?: string
+          pending_balance?: number
+          refund_count?: number
+          status?: string
+          total_orders?: number
+          total_sales?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       ctv_registrations: {
         Row: {
           bank_info: string | null

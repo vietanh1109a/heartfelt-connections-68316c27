@@ -18,6 +18,7 @@ import ResetPassword from "./pages/ResetPassword";
 import Products from "./pages/Products";
 import GameKeys from "./pages/GameKeys";
 import CTV from "./pages/CTV";
+import CTVDashboard from "./pages/ctv/CTVDashboard";
 
 const queryClient = new QueryClient();
 
@@ -70,6 +71,7 @@ const App = () => (
             <Route path="/products" element={<Products />} />
             <Route path="/game-keys" element={<GameKeys />} />
             <Route path="/ctv" element={<CTV />} />
+            <Route path="/ctv/dashboard" element={<ProtectedRoute><CTVDashboard /></ProtectedRoute>} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
