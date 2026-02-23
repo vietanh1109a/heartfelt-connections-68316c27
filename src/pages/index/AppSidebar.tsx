@@ -1,7 +1,7 @@
 import { memo } from "react";
 import {
   Play, Package, Gamepad2, History, Settings,
-  Wallet, Crown, Shield, Puzzle, LogOut, AlertTriangle,
+  Wallet, Crown, Shield, Puzzle, LogOut, LogIn, AlertTriangle,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import type { Tables } from "@/integrations/supabase/types";
