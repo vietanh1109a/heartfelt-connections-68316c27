@@ -6,7 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import {
   BarChart3, Package, ShoppingCart, Wallet, Settings,
-  LayoutDashboard, ArrowLeft, LogOut, PlusCircle,
+  LayoutDashboard, ArrowLeft, LogOut, PlusCircle, MessageCircle,
 } from "lucide-react";
 import { CTVOverview } from "./components/CTVOverview";
 import { CTVListings } from "./components/CTVListings";
@@ -135,6 +135,15 @@ const CTVDashboard = () => {
             <span>Chờ duyệt</span>
             <span className="text-yellow-400 font-bold">{(ctvProfile.pending_balance ?? 0).toLocaleString("vi-VN")}đ</span>
           </div>
+          <a
+            href="https://t.me/vietsix"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 mx-1 mt-2 px-3 py-2 rounded-lg text-xs font-medium bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+          >
+            <MessageCircle className="h-3.5 w-3.5" />
+            Liên hệ Admin
+          </a>
         </div>
       </aside>
 
