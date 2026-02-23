@@ -2,7 +2,7 @@ import { memo } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   LogOut, Wallet, User, History, Puzzle, Shield,
-  Crown, ChevronDown, AlertTriangle, Package, Gamepad2,
+  Crown, ChevronDown, AlertTriangle,
 } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
@@ -83,12 +83,6 @@ const PageHeader = memo(({
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => navigate("/history")} className="cursor-pointer gap-2.5">
                 <History className="h-4 w-4 text-muted-foreground" /> Lịch sử giao dịch
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => navigate("/products")} className="cursor-pointer gap-2.5">
-                <Package className="h-4 w-4 text-muted-foreground" /> Sản phẩm
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => navigate("/game-keys")} className="cursor-pointer gap-2.5">
-                <Gamepad2 className="h-4 w-4 text-muted-foreground" /> Key Game
               </DropdownMenuItem>
               <DropdownMenuItem onClick={onShowDeposit} className="cursor-pointer gap-2.5">
                 <Wallet className="h-4 w-4 text-muted-foreground" /> Nạp tiền
