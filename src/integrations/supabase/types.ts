@@ -127,6 +127,8 @@ export type Database = {
           deposit_code: string
           expires_at: string | null
           id: string
+          paid_at: string | null
+          sepay_tx_id: string | null
           status: string
           updated_at: string
           user_id: string
@@ -138,6 +140,8 @@ export type Database = {
           deposit_code: string
           expires_at?: string | null
           id?: string
+          paid_at?: string | null
+          sepay_tx_id?: string | null
           status?: string
           updated_at?: string
           user_id: string
@@ -149,6 +153,8 @@ export type Database = {
           deposit_code?: string
           expires_at?: string | null
           id?: string
+          paid_at?: string | null
+          sepay_tx_id?: string | null
           status?: string
           updated_at?: string
           user_id?: string
@@ -714,6 +720,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      webhook_events: {
+        Row: {
+          created_at: string
+          event_id: string
+          id: string
+          payload: Json | null
+          provider: string
+        }
+        Insert: {
+          created_at?: string
+          event_id: string
+          id?: string
+          payload?: Json | null
+          provider: string
+        }
+        Update: {
+          created_at?: string
+          event_id?: string
+          id?: string
+          payload?: Json | null
+          provider?: string
+        }
+        Relationships: []
       }
     }
     Views: {
