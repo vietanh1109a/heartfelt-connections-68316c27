@@ -7,7 +7,6 @@ import { toast } from "sonner";
 import { ArrowLeft, ShoppingCart, Package, Gamepad2, Copy, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface Product {
   id: string;
@@ -26,7 +25,7 @@ function fmtVnd(amount: number) {
   return amount.toLocaleString("vi-VN") + "đ";
 }
 
-export default function Products({ filterCategory }: { filterCategory?: string }) {
+export default function Products({ filterCategory, embedded }: { filterCategory?: string; embedded?: boolean }) {
   const { user } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -51,7 +50,6 @@ export default function Products({ filterCategory }: { filterCategory?: string }
       const { data, error } = await query;
       if (error) throw error;
 
-      // Get stock counts
       const productIds = (data ?? []).map((p: any) => p.id);
       if (productIds.length > 0) {
         const { data: stockData } = await supabase
@@ -110,83 +108,59 @@ export default function Products({ filterCategory }: { filterCategory?: string }
   const title = isGameKeys ? "Key Game" : "Sản phẩm";
   const icon = isGameKeys ? <Gamepad2 className="h-5 w-5 text-primary" /> : <Package className="h-5 w-5 text-primary" />;
 
-  return (
-    <div className="min-h-screen bg-background">
-      <header className="flex items-center gap-3 px-6 py-4 border-b border-border/30">
-        <Button variant="ghost" size="icon" onClick={() => navigate("/")}>
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
-        <div className="flex items-center gap-2">
-          {icon}
-          <h1 className="text-xl font-bold text-foreground">{title}</h1>
+  // If embedded, render just the content without page wrapper/header
+  const content = (
+    <>
+      {isLoading ? (
+        <div className="text-center py-12 text-muted-foreground">Đang tải...</div>
+      ) : products.length === 0 ? (
+        <div className="text-center py-16 space-y-3">
+          <Package className="h-12 w-12 text-muted-foreground/40 mx-auto" />
+          <p className="text-muted-foreground">Chưa có sản phẩm nào</p>
         </div>
-      </header>
-
-      {!filterCategory && (
-        <div className="max-w-5xl mx-auto px-4 pt-4">
-          <Tabs defaultValue="all" onValueChange={(v) => {
-            if (v === "game_key") navigate("/game-keys");
-          }}>
-            <TabsList>
-              <TabsTrigger value="all">Tất cả</TabsTrigger>
-              <TabsTrigger value="game_key">Key Game</TabsTrigger>
-            </TabsList>
-          </Tabs>
-        </div>
-      )}
-
-      <main className="max-w-5xl mx-auto px-4 py-6">
-        {isLoading ? (
-          <div className="text-center py-12 text-muted-foreground">Đang tải...</div>
-        ) : products.length === 0 ? (
-          <div className="text-center py-16 space-y-3">
-            <Package className="h-12 w-12 text-muted-foreground/40 mx-auto" />
-            <p className="text-muted-foreground">Chưa có sản phẩm nào</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-            {products.map((product) => (
-              <div
-                key={product.id}
-                onClick={() => setSelectedProduct(product)}
-                className="group cursor-pointer rounded-xl border border-border/40 bg-card/60 overflow-hidden hover:border-primary/30 hover:bg-card/80 transition-all"
-              >
-                <div className="aspect-square bg-secondary/30 relative overflow-hidden">
-                  {product.thumbnail_url ? (
-                    <img
-                      src={product.thumbnail_url}
-                      alt={product.name}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                      loading="lazy"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <Package className="h-10 w-10 text-muted-foreground/30" />
-                    </div>
-                  )}
-                  {product.stock_count === 0 && (
-                    <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
-                      <span className="text-destructive font-bold text-sm">Hết hàng</span>
-                    </div>
-                  )}
-                </div>
-                <div className="p-3 space-y-1.5">
-                  <h3 className="text-sm font-semibold text-foreground line-clamp-2">{product.name}</h3>
-                  {product.note && (
-                    <p className="text-xs text-muted-foreground line-clamp-1">{product.note}</p>
-                  )}
-                  <div className="flex items-center justify-between pt-1">
-                    <span className="text-primary font-bold text-sm">{fmtVnd(product.price)}</span>
-                    <span className={`text-xs ${product.stock_count! > 0 ? "text-green-400" : "text-destructive"}`}>
-                      {product.stock_count! > 0 ? `Còn ${product.stock_count}` : "Hết hàng"}
-                    </span>
+      ) : (
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+          {products.map((product) => (
+            <div
+              key={product.id}
+              onClick={() => setSelectedProduct(product)}
+              className="group cursor-pointer rounded-xl border border-border/40 bg-card/60 overflow-hidden hover:border-primary/30 hover:bg-card/80 transition-all"
+            >
+              <div className="aspect-square bg-secondary/30 relative overflow-hidden">
+                {product.thumbnail_url ? (
+                  <img
+                    src={product.thumbnail_url}
+                    alt={product.name}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    loading="lazy"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <Package className="h-10 w-10 text-muted-foreground/30" />
                   </div>
+                )}
+                {product.stock_count === 0 && (
+                  <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                    <span className="text-destructive font-bold text-sm">Hết hàng</span>
+                  </div>
+                )}
+              </div>
+              <div className="p-3 space-y-1.5">
+                <h3 className="text-sm font-semibold text-foreground line-clamp-2">{product.name}</h3>
+                {product.note && (
+                  <p className="text-xs text-muted-foreground line-clamp-1">{product.note}</p>
+                )}
+                <div className="flex items-center justify-between pt-1">
+                  <span className="text-primary font-bold text-sm">{fmtVnd(product.price)}</span>
+                  <span className={`text-xs ${product.stock_count! > 0 ? "text-green-400" : "text-destructive"}`}>
+                    {product.stock_count! > 0 ? `Còn ${product.stock_count}` : "Hết hàng"}
+                  </span>
                 </div>
               </div>
-            ))}
-          </div>
-        )}
-      </main>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Product Detail Modal */}
       <Dialog open={!!selectedProduct} onOpenChange={() => setSelectedProduct(null)}>
@@ -267,6 +241,27 @@ export default function Products({ filterCategory }: { filterCategory?: string }
           )}
         </DialogContent>
       </Dialog>
+    </>
+  );
+
+  if (embedded) {
+    return content;
+  }
+
+  return (
+    <div className="min-h-screen bg-background">
+      <header className="flex items-center gap-3 px-6 py-4 border-b border-border/30">
+        <Button variant="ghost" size="icon" onClick={() => navigate("/")}>
+          <ArrowLeft className="h-5 w-5" />
+        </Button>
+        <div className="flex items-center gap-2">
+          {icon}
+          <h1 className="text-xl font-bold text-foreground">{title}</h1>
+        </div>
+      </header>
+      <main className="max-w-5xl mx-auto px-4 py-6">
+        {content}
+      </main>
     </div>
   );
 }

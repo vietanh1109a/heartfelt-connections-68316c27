@@ -4,7 +4,8 @@ import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
-import { CheckCircle2, Crown } from "lucide-react";
+import { CheckCircle2, Crown, Play, Package, Gamepad2 } from "lucide-react";
+import Products from "./Products";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useIndexData, useCookieActions, MIN_EXTENSION_VERSION, compareVersions } from "@/hooks/useIndexData";
@@ -47,6 +48,7 @@ const Index = () => {
 
   // Watch loading (used in WatchModal inline)
   const [watchLoading, setWatchLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState<"netflix" | "products" | "game_keys">("netflix");
 
   const { trySendCookie, checkExtensionAlive } = useCookieActions(user, extensionVersion, setExtensionVersion);
 
@@ -284,67 +286,101 @@ const Index = () => {
           onShowDeposit={() => setShowDeposit(true)}
         />
 
-        {/* Hero */}
-        <section className="text-center py-8 md:py-12 px-4 relative z-10">
-          <motion.h2
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className="text-3xl md:text-4xl font-bold text-foreground"
-          >
-            Xin chào, {profile?.display_name || "bạn"} 👋
-          </motion.h2>
-          <motion.p
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.15, duration: 0.4 }}
-            className="text-muted-foreground mt-2 text-sm"
-          >
-            Sẵn sàng xem phim chưa?
-          </motion.p>
-        </section>
-
-        {/* Main content */}
-        <main className="max-w-5xl mx-auto px-4 md:px-6 pb-16 relative z-10">
-          <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
-            <div className="lg:col-span-3">
-              <WatchSection
-                user={user}
-                profile={profile}
-                isVip={isVip}
-                maxSwitches={maxSwitches}
-                switchesLeft={switchesLeft}
-                extensionVersion={extensionVersion}
-                setExtensionVersion={setExtensionVersion}
-                extensionOutdated={extensionOutdated}
-                onShowExtensionModal={() => setShowExtensionModal(true)}
-                onShowWatchModal={() => setShowWatchModal(true)}
-                onShowReportDialog={() => setShowReportDialog(true)}
-                tvCode={tvCode}
-                setTvCode={setTvCode}
-                onShowTvConfirm={() => setShowTvConfirm(true)}
-              />
-            </div>
-            <div className="lg:col-span-2">
-              <SidePanel
-                profile={profile}
-                isVip={isVip}
-                vipExpiresAt={vipExpiresAt}
-                maxSwitches={maxSwitches}
-                switchesLeft={switchesLeft}
-                activeCookieCount={activeCookieCount}
-                freeViews={(profile as any)?.free_views_left ?? 0}
-                vipViews={(profile as any)?.vip_views_left ?? 0}
-                onShowInfo={() => setShowInfoModal(true)}
-                onShowVipPlans={() => setShowVipPlans(true)}
-                onShowReportDialog={() => setShowReportDialog(true)}
-                onShowDeposit={() => setShowDeposit(true)}
-                isGuest={!user}
-                extensionVersion={extensionVersion}
-                onShowExtensionModal={() => setShowExtensionModal(true)}
-              />
-            </div>
+        {/* Tabs */}
+        <div className="max-w-5xl mx-auto px-4 md:px-6 pt-4 relative z-10">
+          <div className="flex gap-1 bg-muted/50 p-1 rounded-lg w-fit">
+            {[
+              { key: "netflix" as const, label: "Netflix", icon: Play },
+              { key: "products" as const, label: "Sản phẩm", icon: Package },
+              { key: "game_keys" as const, label: "Key Game", icon: Gamepad2 },
+            ].map(({ key, label, icon: Icon }) => (
+              <button
+                key={key}
+                onClick={() => setActiveTab(key)}
+                className={`flex items-center gap-1.5 px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                  activeTab === key
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <Icon className="h-4 w-4" />
+                {label}
+              </button>
+            ))}
           </div>
+        </div>
+
+        {/* Tab Content */}
+        <main className="max-w-5xl mx-auto px-4 md:px-6 pb-16 pt-6 relative z-10">
+          {activeTab === "netflix" && (
+            <>
+              <section className="text-center pb-6">
+                <motion.h2
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5 }}
+                  className="text-3xl md:text-4xl font-bold text-foreground"
+                >
+                  Xin chào, {profile?.display_name || "bạn"} 👋
+                </motion.h2>
+                <motion.p
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.15, duration: 0.4 }}
+                  className="text-muted-foreground mt-2 text-sm"
+                >
+                  Sẵn sàng xem phim chưa?
+                </motion.p>
+              </section>
+              <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+                <div className="lg:col-span-3">
+                  <WatchSection
+                    user={user}
+                    profile={profile}
+                    isVip={isVip}
+                    maxSwitches={maxSwitches}
+                    switchesLeft={switchesLeft}
+                    extensionVersion={extensionVersion}
+                    setExtensionVersion={setExtensionVersion}
+                    extensionOutdated={extensionOutdated}
+                    onShowExtensionModal={() => setShowExtensionModal(true)}
+                    onShowWatchModal={() => setShowWatchModal(true)}
+                    onShowReportDialog={() => setShowReportDialog(true)}
+                    tvCode={tvCode}
+                    setTvCode={setTvCode}
+                    onShowTvConfirm={() => setShowTvConfirm(true)}
+                  />
+                </div>
+                <div className="lg:col-span-2">
+                  <SidePanel
+                    profile={profile}
+                    isVip={isVip}
+                    vipExpiresAt={vipExpiresAt}
+                    maxSwitches={maxSwitches}
+                    switchesLeft={switchesLeft}
+                    activeCookieCount={activeCookieCount}
+                    freeViews={(profile as any)?.free_views_left ?? 0}
+                    vipViews={(profile as any)?.vip_views_left ?? 0}
+                    onShowInfo={() => setShowInfoModal(true)}
+                    onShowVipPlans={() => setShowVipPlans(true)}
+                    onShowReportDialog={() => setShowReportDialog(true)}
+                    onShowDeposit={() => setShowDeposit(true)}
+                    isGuest={!user}
+                    extensionVersion={extensionVersion}
+                    onShowExtensionModal={() => setShowExtensionModal(true)}
+                  />
+                </div>
+              </div>
+            </>
+          )}
+
+          {activeTab === "products" && (
+            <Products embedded />
+          )}
+
+          {activeTab === "game_keys" && (
+            <Products filterCategory="game_key" embedded />
+          )}
         </main>
       </div>
 
