@@ -75,7 +75,7 @@ const AppSidebar = memo(({
         )}
 
         {/* Main navigation */}
-        <nav className="flex-1 px-2 py-4 space-y-1 overflow-y-auto">
+        <nav className={`flex-1 px-2 py-4 space-y-1 ${collapsed ? "overflow-hidden" : "overflow-y-auto"}`}>
           <p className={`text-[10px] font-semibold uppercase text-muted-foreground tracking-wider mb-2 ${collapsed ? "text-center" : "px-3"}`}>
             {collapsed ? "—" : "Menu"}
           </p>
@@ -159,38 +159,40 @@ const AppSidebar = memo(({
           )}
         </nav>
 
-        {/* User section at bottom */}
-        <div className="border-t border-sidebar-border px-2 py-3">
-          <div className={`flex items-center gap-2.5 px-2 py-2 ${collapsed ? "justify-center" : ""}`}>
-            <div className="h-8 w-8 rounded-full bg-sidebar-primary flex items-center justify-center shrink-0">
-              <span className="text-sidebar-primary-foreground font-bold text-sm">
-                {(profile?.display_name || userEmail || "U").charAt(0).toUpperCase()}
-              </span>
-            </div>
-            {!collapsed && (
-              <div className="min-w-0 flex-1">
-                <p className="text-xs font-semibold text-sidebar-foreground truncate">
-                  {profile?.display_name || "User"}
-                </p>
-                <p className="text-[10px] text-muted-foreground truncate">{userEmail}</p>
-                {isVip && (
-                  <span className="text-[10px] font-bold text-yellow-500 flex items-center gap-0.5">
-                    <Crown className="h-2.5 w-2.5" /> VIP
-                  </span>
-                )}
+        {/* User section at bottom — only show when logged in */}
+        {userEmail && (
+          <div className="border-t border-sidebar-border px-2 py-3">
+            <div className={`flex items-center gap-2.5 px-2 py-2 ${collapsed ? "justify-center" : ""}`}>
+              <div className="h-8 w-8 rounded-full bg-sidebar-primary flex items-center justify-center shrink-0">
+                <span className="text-sidebar-primary-foreground font-bold text-sm">
+                  {(profile?.display_name || userEmail || "U").charAt(0).toUpperCase()}
+                </span>
               </div>
-            )}
+              {!collapsed && (
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-semibold text-sidebar-foreground truncate">
+                    {profile?.display_name || "User"}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground truncate">{userEmail}</p>
+                  {isVip && (
+                    <span className="text-[10px] font-bold text-yellow-500 flex items-center gap-0.5">
+                      <Crown className="h-2.5 w-2.5" /> VIP
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+            <button
+              onClick={onSignOut}
+              className={`w-full flex items-center gap-3 rounded-lg text-sm font-medium text-destructive/70 hover:text-destructive hover:bg-destructive/10 transition-all mt-1 ${
+                collapsed ? "justify-center px-2 py-2" : "px-3 py-2"
+              }`}
+            >
+              <LogOut className="h-4 w-4 shrink-0" />
+              {!collapsed && <span>Đăng xuất</span>}
+            </button>
           </div>
-          <button
-            onClick={onSignOut}
-            className={`w-full flex items-center gap-3 rounded-lg text-sm font-medium text-destructive/70 hover:text-destructive hover:bg-destructive/10 transition-all mt-1 ${
-              collapsed ? "justify-center px-2 py-2" : "px-3 py-2"
-            }`}
-          >
-            <LogOut className="h-4 w-4 shrink-0" />
-            {!collapsed && <span>Đăng xuất</span>}
-          </button>
-        </div>
+        )}
       </aside>
     </>
   );
