@@ -83,7 +83,10 @@ const Auth = () => {
       const { data: signUpData, error } = await supabase.auth.signUp({
         email,
         password,
-        options: { emailRedirectTo: window.location.origin },
+        options: {
+          emailRedirectTo: window.location.origin,
+          data: { display_name: displayName.trim() },
+        },
       });
       if (error) {
         if (error.message.toLowerCase().includes("already registered") || error.message.toLowerCase().includes("already been registered")) {
@@ -92,6 +95,7 @@ const Auth = () => {
           setFormError(error.message);
         }
       } else {
+        // Update display_name in case trigger already created the profile
         if (signUpData.user) {
           await supabase
             .from("profiles")
