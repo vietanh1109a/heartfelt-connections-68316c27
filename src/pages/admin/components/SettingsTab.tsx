@@ -231,6 +231,81 @@ export function SettingsTab() {
       </div>
 
 
+      {/* Links */}
+      <div className="bg-card border border-border/50 rounded-xl overflow-hidden">
+        <SectionHeader
+          title="🔗 Liên kết"
+          subtitle="Link mạng xã hội, hỗ trợ, extension"
+          keys={LINK_KEYS}
+          editValues={editValues}
+          savedValues={savedValues}
+          onSave={() => handleSaveSection("links", LINK_KEYS)}
+          onReset={() => handleResetSection(LINK_KEYS)}
+          saving={saving === "links"}
+        />
+        <div className="divide-y divide-border/20">
+          {LINK_KEYS.map((key) => {
+            const meta = SETTINGS_META[key];
+            return (
+              <div key={key} className="px-5 py-4 flex items-center gap-4">
+                <div className="flex-1 min-w-0">
+                  <label className="text-sm font-medium text-foreground">{meta.label}</label>
+                  <p className="text-xs text-muted-foreground mt-0.5">{meta.description}</p>
+                </div>
+                <Input
+                  value={editValues[key] ?? ""}
+                  onChange={(e) => set(key, e.target.value)}
+                  className="w-64 bg-secondary border-border/40 text-sm font-mono"
+                  placeholder="https://..."
+                />
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Game Settings */}
+      {(() => {
+        const GAME_KEYS = ["free_bonus_views", "free_bonus_days", "free_cookie_slots", "vip_cookie_slots", "free_monthly_switches", "vip_monthly_switches"];
+        return (
+          <div className="bg-card border border-border/50 rounded-xl overflow-hidden">
+            <SectionHeader
+              title="🎮 Cài đặt Game"
+              subtitle="Lượt xem, slot cookie, lượt đổi hàng tháng"
+              keys={GAME_KEYS}
+              editValues={editValues}
+              savedValues={savedValues}
+              onSave={() => handleSaveSection("game", GAME_KEYS)}
+              onReset={() => handleResetSection(GAME_KEYS)}
+              saving={saving === "game"}
+            />
+            <div className="divide-y divide-border/20">
+              {GAME_KEYS.map((key) => {
+                const meta = SETTINGS_META[key];
+                return (
+                  <div key={key} className="px-5 py-4 flex items-center gap-4">
+                    <div className="flex-1 min-w-0">
+                      <label className="text-sm font-medium text-foreground">{meta.label}</label>
+                      <p className="text-xs text-muted-foreground mt-0.5">{meta.description}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="number"
+                        value={editValues[key] ?? ""}
+                        onChange={(e) => set(key, e.target.value)}
+                        className="w-32 bg-secondary border-border/40 text-sm font-mono"
+                        placeholder="0"
+                      />
+                      {meta.suffix && <span className="text-xs text-muted-foreground whitespace-nowrap">{meta.suffix}</span>}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Moderator Permissions */}
       <div className="bg-card border border-border/50 rounded-xl overflow-hidden">
         <div className="px-5 py-3 border-b border-border/30 bg-secondary/20">
