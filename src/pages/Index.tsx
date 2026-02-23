@@ -85,24 +85,17 @@ const Index = () => {
         return;
       }
 
-      // Fetch cookies via edge function (bypasses RLS on cookie_stock)
-      const { data: sessionData } = await supabase.auth.getSession();
-      const accessToken = sessionData?.session?.access_token;
-      const supabaseUrl = "https://ckamflsosjzkyukajxzu.supabase.co";
-      const anonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNrYW1mbHNvc2p6a3l1a2FqeHp1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0NzMyOTYsImV4cCI6MjA4NzA0OTI5Nn0.G32dB8s_G2xAWohnqegON4cfQT2tswgM9RGFt5tmud0";
-      
-      const res = await fetch(`${supabaseUrl}/functions/v1/assign-cookie`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${accessToken}`,
-          "apikey": anonKey,
-        },
-        body: JSON.stringify({}),
+      // Fetch cookies via edge function
+      const { data: assignResult, error: assignError } = await supabase.functions.invoke("assign-cookie", {
+        body: {},
       });
-      const assignResult = await res.json();
       
-      if (!res.ok || assignResult.error) {
+      if (assignError) {
+        toast.error("Không thể lấy tài khoản. Vui lòng liên hệ hỗ trợ.");
+        return;
+      }
+      
+      if (assignResult?.error) {
         toast.error(assignResult.error || "Không thể lấy tài khoản. Vui lòng liên hệ hỗ trợ.");
         return;
       }
@@ -176,21 +169,12 @@ const Index = () => {
     }
     setTvLoading(true);
     try {
-      // Fetch cookies via edge function (bypasses RLS)
-      const { data: tvSession } = await supabase.auth.getSession();
-      const tvToken = tvSession?.session?.access_token;
-      const tvRes = await fetch("https://ckamflsosjzkyukajxzu.supabase.co/functions/v1/assign-cookie", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${tvToken}`,
-          "apikey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNrYW1mbHNvc2p6a3l1a2FqeHp1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0NzMyOTYsImV4cCI6MjA4NzA0OTI5Nn0.G32dB8s_G2xAWohnqegON4cfQT2tswgM9RGFt5tmud0",
-        },
-        body: JSON.stringify({}),
+      // Fetch cookies via edge function
+      const { data: tvAssign, error: tvAssignError } = await supabase.functions.invoke("assign-cookie", {
+        body: {},
       });
-      const tvAssign = await tvRes.json();
-      if (!tvRes.ok || tvAssign.error) {
-        toast.error(tvAssign.error || "Không thể lấy tài khoản.");
+      if (tvAssignError || tvAssign?.error) {
+        toast.error(tvAssign?.error || "Không thể lấy tài khoản.");
         return;
       }
       const activeCookies = (tvAssign.assignments || [])
