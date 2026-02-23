@@ -1,7 +1,7 @@
 import { memo } from "react";
 import {
   Play, Package, Gamepad2, History, Settings,
-  Wallet, Crown, Shield, Puzzle, LogOut, LogIn, AlertTriangle,
+  Wallet, Crown, Shield, Puzzle, LogOut, LogIn, AlertTriangle, UserPlus,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import type { Tables } from "@/integrations/supabase/types";
@@ -140,6 +140,27 @@ const AppSidebar = memo(({
               )}
             </button>
           ))}
+
+          {/* CTV Registration */}
+          <button
+            onClick={() => navigate("/ctv")}
+            className={`w-full flex items-center gap-3 rounded-lg text-sm font-medium text-primary/80 hover:text-primary hover:bg-sidebar-accent/50 transition-all relative group ${
+              collapsed ? "justify-center px-2 py-2.5" : "px-3 py-2.5"
+            }`}
+          >
+            <UserPlus className="h-4 w-4 shrink-0" />
+            {!collapsed && (
+              <>
+                <span className="flex-1 text-left">Đăng ký CTV</span>
+                <span className="text-[10px] text-primary font-bold">FREE</span>
+              </>
+            )}
+            {collapsed && (
+              <span className="absolute left-full ml-2 px-2 py-1 rounded-md bg-popover text-popover-foreground text-xs whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none shadow-lg z-50">
+                Đăng ký CTV FREE
+              </span>
+            )}
+          </button>
 
           {isAdmin && (
             <button
