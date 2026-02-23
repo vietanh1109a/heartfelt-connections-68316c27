@@ -49,20 +49,40 @@ const CTV = () => {
     }
 
     setSubmitting(true);
-    const { error } = await supabase.from("ctv_registrations").insert({
+
+    // Create ctv_registrations entry
+    const { error: regError } = await supabase.from("ctv_registrations").insert({
       user_id: user.id,
       display_name: displayName.trim(),
       contact_info: contactInfo.trim(),
       bank_info: bankInfo.trim() || null,
     });
+
+    if (regError) {
+      toast({ title: "Lỗi đăng ký", description: regError.message, variant: "destructive" });
+      setSubmitting(false);
+      return;
+    }
+
+    // Also create ctv_profiles so they can access the dashboard immediately
+    const { error: profileError } = await supabase.from("ctv_profiles").insert({
+      user_id: user.id,
+      display_name: displayName.trim(),
+      contact_info: contactInfo.trim() || null,
+      bank_name: null,
+      bank_account: null,
+      bank_holder: null,
+    });
+
     setSubmitting(false);
 
-    if (error) {
-      toast({ title: "Lỗi đăng ký", description: error.message, variant: "destructive" });
-    } else {
-      toast({ title: "🎉 Đăng ký CTV thành công!", description: "Chúng tôi sẽ xét duyệt và liên hệ bạn sớm." });
-      navigate("/");
+    if (profileError) {
+      // Profile may already exist, still OK
+      console.warn("CTV profile insert:", profileError.message);
     }
+
+    toast({ title: "🎉 Đăng ký CTV thành công!", description: "Bạn có thể truy cập CTV Dashboard ngay." });
+    navigate("/ctv/dashboard");
   };
 
   const benefits = [
