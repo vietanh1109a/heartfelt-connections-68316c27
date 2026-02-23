@@ -87,7 +87,7 @@ Deno.serve(async (req) => {
     // Get current profile to check if already verified
     const { data: currentProfile } = await supabaseAdmin
       .from("profiles")
-      .select("is_verified, balance, free_views_left")
+      .select("is_verified, balance, bonus_balance")
       .eq("user_id", userId)
       .single();
 
@@ -100,11 +100,11 @@ Deno.serve(async (req) => {
     // Hardcode: 10 lượt xem miễn phí, hạn 7 ngày
     const bonusExpiresAt = new Date(Date.now() + FREE_BONUS_DAYS * 24 * 60 * 60 * 1000).toISOString();
 
-    // Cấp lượt xem miễn phí + đánh dấu đã xác thực (không cộng tiền)
+    // Cấp lượt xem miễn phí + đánh dấu đã xác thực
     const { error: updateError } = await supabaseAdmin
       .from("profiles")
       .update({
-        free_views_left: FREE_BONUS_VIEWS,
+        bonus_balance: FREE_BONUS_VIEWS,
         bonus_expires_at: bonusExpiresAt,
         is_verified: true,
       })
@@ -135,7 +135,7 @@ Deno.serve(async (req) => {
         if (referrerId) {
           const { data: referrerProfile } = await supabaseAdmin
             .from("profiles")
-            .select("is_verified, free_views_left")
+            .select("is_verified, bonus_balance")
             .eq("user_id", referrerId)
             .single();
 
@@ -162,8 +162,6 @@ Deno.serve(async (req) => {
               const monthlyCount = (monthlyReferrals ?? []).length;
 
               if (monthlyCount >= MAX_REFERRALS_PER_MONTH) {
-                // Referrer đã đạt giới hạn tháng — không cộng bonus cho referrer
-                // Nhưng vẫn ghi log và trả success
                 console.log(`[verify-otp] Referrer ${referrerId} reached monthly limit (${monthlyCount}/${MAX_REFERRALS_PER_MONTH})`);
                 return new Response(JSON.stringify({ success: true, referralBonus: false, referralLimitReached: true }), {
                   headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -171,10 +169,10 @@ Deno.serve(async (req) => {
               }
 
               // Cộng lượt xem cho REFERRER (+5 lượt)
-              const referrerCurrentViews = referrerProfile.free_views_left ?? 0;
+              const referrerCurrentBonus = referrerProfile.bonus_balance ?? 0;
               await supabaseAdmin
                 .from("profiles")
-                .update({ free_views_left: referrerCurrentViews + REFERRAL_BONUS_VIEWS })
+                .update({ bonus_balance: referrerCurrentBonus + REFERRAL_BONUS_VIEWS })
                 .eq("user_id", referrerId);
 
               await supabaseAdmin.from("transactions").insert({
@@ -187,7 +185,7 @@ Deno.serve(async (req) => {
               // Cộng thêm lượt xem cho NGƯỜI MỚI (+5 lượt, tổng 15)
               await supabaseAdmin
                 .from("profiles")
-                .update({ free_views_left: FREE_BONUS_VIEWS + REFERRAL_BONUS_VIEWS })
+                .update({ bonus_balance: FREE_BONUS_VIEWS + REFERRAL_BONUS_VIEWS })
                 .eq("user_id", userId);
 
               await supabaseAdmin.from("transactions").insert({
