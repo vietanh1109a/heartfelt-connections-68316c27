@@ -3,7 +3,7 @@ import { useRolePermissions } from "@/hooks/useRolePermissions";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Users, Cookie, DollarSign, Shield, Wallet, Film, Crown, BarChart2, Settings, UserCheck, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Users, Cookie, DollarSign, Shield, Wallet, Film, Crown, BarChart2, Settings, UserCheck, AlertTriangle, Package } from "lucide-react";
 import { UsersTab } from "./components/UsersTab";
 import { CookieStockTab } from "./components/CookieStockTab";
 import { TransactionsTab } from "./components/TransactionsTab";
@@ -14,6 +14,7 @@ import { StatsTab } from "./components/StatsTab";
 import { SettingsTab } from "./components/SettingsTab";
 import { ModeratorsTab } from "./components/ModeratorsTab";
 import { CookieReportsTab } from "./components/CookieReportsTab";
+import { ProductsTab } from "./components/ProductsTab";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -80,6 +81,7 @@ const AdminDashboard = () => {
     { value: "transactions", label: "Giao dịch", icon: <DollarSign className="h-4 w-4" />, content: <TransactionsTab /> },
     { value: "deposits", label: "Nạp tiền", icon: <Wallet className="h-4 w-4" />, content: <DepositsTab /> },
     { value: "vip-plans", label: "Gói VIP", icon: <Crown className="h-4 w-4" />, content: <VipPlansTab /> },
+    { value: "products", label: "Sản phẩm", icon: <Package className="h-4 w-4" />, content: <ProductsTab /> },
     // Only super admin can manage moderators and settings
     ...(isSuperAdmin ? [
       { value: "moderators", label: "Moderators", icon: <UserCheck className="h-4 w-4" />, content: <ModeratorsTab /> },
