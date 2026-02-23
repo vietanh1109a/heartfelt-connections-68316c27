@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { CheckCircle2, Crown, Menu } from "lucide-react";
 import Products from "./Products";
 import { Button } from "@/components/ui/button";
@@ -29,6 +29,20 @@ const Index = () => {
     isVip, vipExpiresAt, maxSwitches, switchesLeft,
     vipPlans,
   } = useIndexData();
+
+  const { data: isCTV } = useQuery({
+    queryKey: ["is-ctv", user?.id],
+    queryFn: async () => {
+      if (!user) return false;
+      const { data } = await supabase
+        .from("ctv_profiles")
+        .select("id")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      return !!data;
+    },
+    enabled: !!user,
+  });
 
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -266,6 +280,7 @@ const Index = () => {
           profile={profile}
           userEmail={user?.email}
           isAdmin={isAdmin}
+          isCTV={!!isCTV}
           isVip={isVip}
           extensionVersion={extensionVersion}
           extensionOutdated={extensionOutdated}
