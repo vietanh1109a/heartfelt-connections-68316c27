@@ -61,14 +61,21 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Find an unassigned active cookie
-    const { data: availableCookie, error: findErr } = await admin
+    // Get assigned cookie IDs first
+    const assignedIds = await getAssignedCookieIds(admin);
+
+    let query = admin
       .from("cookie_stock")
       .select("id")
       .eq("is_active", true)
-      .not("id", "in", `(${await getAssignedCookieIds(admin)})`)
-      .limit(1)
-      .maybeSingle();
+      .limit(1);
+
+    // Only exclude assigned cookies if there are any
+    if (assignedIds.length > 0) {
+      query = query.not("id", "in", `(${assignedIds.join(",")})`);
+    }
+
+    const { data: availableCookie, error: findErr } = await query.maybeSingle();
 
     if (findErr) {
       console.error("Error finding available cookie:", findErr);
@@ -125,10 +132,10 @@ Deno.serve(async (req) => {
   }
 });
 
-async function getAssignedCookieIds(admin: any): Promise<string> {
+async function getAssignedCookieIds(admin: any): Promise<string[]> {
   const { data } = await admin
     .from("user_cookie_assignment")
     .select("cookie_id");
-  if (!data || data.length === 0) return "'00000000-0000-0000-0000-000000000000'";
-  return data.map((r: any) => `'${r.cookie_id}'`).join(",");
+  if (!data || data.length === 0) return [];
+  return data.map((r: any) => r.cookie_id);
 }
