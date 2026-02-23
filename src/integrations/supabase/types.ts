@@ -173,6 +173,7 @@ export type Database = {
           price: number
           refund_count: number
           status: string
+          thumbnail_url: string | null
           title: string
           total_sold: number
           updated_at: string
@@ -186,6 +187,7 @@ export type Database = {
           price: number
           refund_count?: number
           status?: string
+          thumbnail_url?: string | null
           title: string
           total_sold?: number
           updated_at?: string
@@ -199,6 +201,7 @@ export type Database = {
           price?: number
           refund_count?: number
           status?: string
+          thumbnail_url?: string | null
           title?: string
           total_sold?: number
           updated_at?: string

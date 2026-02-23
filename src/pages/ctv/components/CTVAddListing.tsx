@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
+import { ImagePlus, X, MessageCircle } from "lucide-react";
 
 interface Props {
   userId: string;
@@ -18,7 +19,27 @@ export const CTVAddListing = ({ userId, onSuccess }: Props) => {
   const [price, setPrice] = useState("");
   const [description, setDescription] = useState("");
   const [credentials, setCredentials] = useState("");
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      toast({ title: "Ảnh tối đa 5MB", variant: "destructive" });
+      return;
+    }
+    setImageFile(file);
+    setImagePreview(URL.createObjectURL(file));
+  };
+
+  const removeImage = () => {
+    setImageFile(null);
+    setImagePreview(null);
+    if (fileRef.current) fileRef.current.value = "";
+  };
 
   const handleSubmit = async () => {
     if (!title.trim() || !price) {
@@ -33,6 +54,25 @@ export const CTVAddListing = ({ userId, onSuccess }: Props) => {
 
     setSubmitting(true);
 
+    // Upload image if provided
+    let thumbnailUrl: string | null = null;
+    if (imageFile) {
+      const ext = imageFile.name.split(".").pop();
+      const filePath = `${userId}/${Date.now()}.${ext}`;
+      const { error: uploadError } = await supabase.storage
+        .from("ctv-images")
+        .upload(filePath, imageFile);
+
+      if (uploadError) {
+        toast({ title: "Lỗi upload ảnh", description: uploadError.message, variant: "destructive" });
+        setSubmitting(false);
+        return;
+      }
+
+      const { data: urlData } = supabase.storage.from("ctv-images").getPublicUrl(filePath);
+      thumbnailUrl = urlData.publicUrl;
+    }
+
     // Create listing
     const { data: listing, error: listingError } = await supabase
       .from("ctv_listings")
@@ -42,6 +82,7 @@ export const CTVAddListing = ({ userId, onSuccess }: Props) => {
         category,
         price: priceNum,
         description: description.trim() || null,
+        thumbnail_url: thumbnailUrl,
       })
       .select("id")
       .single();
@@ -75,13 +116,56 @@ export const CTVAddListing = ({ userId, onSuccess }: Props) => {
 
   return (
     <div className="max-w-lg space-y-4">
-      <h2 className="text-xl font-bold text-foreground">Thêm sản phẩm</h2>
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl font-bold text-foreground">Thêm sản phẩm</h2>
+        <Button
+          variant="outline"
+          size="sm"
+          asChild
+        >
+          <a href="https://t.me/vietsix" target="_blank" rel="noopener noreferrer">
+            <MessageCircle className="h-4 w-4 mr-1" />
+            Liên hệ Admin
+          </a>
+        </Button>
+      </div>
 
       <Card className="border-border/50">
         <CardHeader className="pb-3">
           <CardTitle className="text-base">Thông tin sản phẩm</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
+          {/* Image upload */}
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-foreground">Ảnh mô tả sản phẩm</label>
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleImageSelect}
+            />
+            {imagePreview ? (
+              <div className="relative w-full aspect-video rounded-lg overflow-hidden border border-border/50 bg-secondary/30">
+                <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
+                <button
+                  onClick={removeImage}
+                  className="absolute top-2 right-2 p-1.5 rounded-full bg-background/80 hover:bg-background text-foreground transition-colors"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => fileRef.current?.click()}
+                className="w-full aspect-video rounded-lg border-2 border-dashed border-border/50 hover:border-primary/50 bg-secondary/20 flex flex-col items-center justify-center gap-2 transition-colors"
+              >
+                <ImagePlus className="h-8 w-8 text-muted-foreground" />
+                <span className="text-sm text-muted-foreground">Bấm để chọn ảnh (tối đa 5MB)</span>
+              </button>
+            )}
+          </div>
+
           <div className="space-y-1.5">
             <label className="text-sm font-medium text-foreground">Loại sản phẩm</label>
             <Select value={category} onValueChange={setCategory}>
