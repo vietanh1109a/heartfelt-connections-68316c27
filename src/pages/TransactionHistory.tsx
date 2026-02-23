@@ -3,7 +3,8 @@ import { useTransactions } from "@/hooks/useTransactions";
 import { useProfile } from "@/hooks/useProfile";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Wallet, ArrowDownCircle, ArrowUpCircle, Eye, EyeOff, Crown, Star } from "lucide-react";
+import { ArrowLeft, Wallet, ArrowDownCircle, ArrowUpCircle, Eye, EyeOff, Crown, Star, ShoppingBag, Copy, Check } from "lucide-react";
+import { toast } from "sonner";
 import { format } from "date-fns";
 import { vi } from "date-fns/locale";
 import { motion } from "framer-motion";
@@ -18,6 +19,7 @@ const TransactionHistory = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [visibleAccounts, setVisibleAccounts] = useState<Record<string, boolean>>({});
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   // Fetch user's plan purchases with assigned accounts
   const { data: purchases } = useQuery({
@@ -47,6 +49,41 @@ const TransactionHistory = () => {
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data as any[];
+    },
+    enabled: !!user,
+  });
+
+  // Fetch product purchases
+  const { data: productPurchases } = useQuery({
+    queryKey: ["my-product-purchases", user?.id],
+    queryFn: async () => {
+      if (!user) return [];
+      const { data, error } = await supabase
+        .from("product_purchases")
+        .select("id, amount_paid, created_at, product_id, product_item_id")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+
+      const productIds = [...new Set((data ?? []).map((p) => p.product_id))];
+      const { data: products } = await supabase
+        .from("products")
+        .select("id, name, thumbnail_url")
+        .in("id", productIds);
+      const productMap = Object.fromEntries((products ?? []).map((p) => [p.id, p]));
+
+      const itemIds = (data ?? []).map((p) => p.product_item_id);
+      const { data: items } = await supabase
+        .from("product_items")
+        .select("id, content")
+        .in("id", itemIds);
+      const itemMap = Object.fromEntries((items ?? []).map((i) => [i.id, i.content]));
+
+      return (data ?? []).map((p) => ({
+        ...p,
+        product_name: productMap[p.product_id]?.name ?? "Sản phẩm",
+        thumbnail_url: productMap[p.product_id]?.thumbnail_url,
+        content: itemMap[p.product_item_id] ?? "",
+      }));
     },
     enabled: !!user,
   });
@@ -100,6 +137,9 @@ const TransactionHistory = () => {
             </TabsTrigger>
             <TabsTrigger value="plans" className="flex-1 gap-1.5">
               <Star className="h-4 w-4" /> Gói Netflix
+            </TabsTrigger>
+            <TabsTrigger value="products" className="flex-1 gap-1.5">
+              <ShoppingBag className="h-4 w-4" /> Mua hàng
             </TabsTrigger>
           </TabsList>
 
@@ -373,6 +413,88 @@ const TransactionHistory = () => {
                           Đang chờ Admin gán tài khoản Netflix cho bạn...
                         </div>
                       )}
+                    </motion.div>
+                  );
+                })}
+              </div>
+            )}
+          </TabsContent>
+
+          {/* ─── TAB: PRODUCT PURCHASES ─── */}
+          <TabsContent value="products">
+            {!productPurchases || productPurchases.length === 0 ? (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="text-center py-16"
+              >
+                <ShoppingBag className="h-16 w-16 text-muted-foreground/20 mx-auto mb-4" />
+                <p className="text-muted-foreground text-lg">Chưa có đơn hàng nào</p>
+                <Button className="mt-6" onClick={() => navigate("/products")}>
+                  Xem sản phẩm
+                </Button>
+              </motion.div>
+            ) : (
+              <div className="space-y-3">
+                {productPurchases.map((p, i) => {
+                  const isVisible = visibleAccounts[`prod-${p.id}`];
+                  const isCopied = copiedId === p.id;
+                  return (
+                    <motion.div
+                      key={p.id}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: i * 0.04 }}
+                      className="p-4 bg-card border border-border/50 rounded-xl"
+                    >
+                      <div className="flex items-center gap-3 mb-3">
+                        {p.thumbnail_url ? (
+                          <img src={p.thumbnail_url} alt="" className="h-10 w-10 rounded-lg object-cover" />
+                        ) : (
+                          <div className="h-10 w-10 rounded-lg bg-secondary/30 flex items-center justify-center">
+                            <ShoppingBag className="h-5 w-5 text-muted-foreground/40" />
+                          </div>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-sm text-foreground truncate">{p.product_name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {format(new Date(p.created_at), "HH:mm - dd/MM/yyyy", { locale: vi })} • {p.amount_paid.toLocaleString("vi-VN")}đ
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="bg-secondary/40 rounded-lg p-3 border border-border/30">
+                        <p className="text-xs text-muted-foreground mb-1">Nội dung sản phẩm:</p>
+                        <p className="text-sm font-mono break-all select-all text-foreground">
+                          {isVisible ? p.content : "••••••••••••••••"}
+                        </p>
+                      </div>
+
+                      <div className="flex gap-2 mt-3">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex-1 gap-1.5 text-xs"
+                          onClick={() => setVisibleAccounts(prev => ({ ...prev, [`prod-${p.id}`]: !prev[`prod-${p.id}`] }))}
+                        >
+                          {isVisible ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                          {isVisible ? "Ẩn" : "Hiện"}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex-1 gap-1.5 text-xs"
+                          onClick={() => {
+                            navigator.clipboard.writeText(p.content);
+                            setCopiedId(p.id);
+                            toast.success("Đã copy!");
+                            setTimeout(() => setCopiedId(null), 2000);
+                          }}
+                        >
+                          {isCopied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                          {isCopied ? "Đã copy" : "Copy"}
+                        </Button>
+                      </div>
                     </motion.div>
                   );
                 })}

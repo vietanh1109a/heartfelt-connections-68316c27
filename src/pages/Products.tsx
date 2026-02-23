@@ -453,7 +453,7 @@ function PurchaseResultModal({
                 {copied ? "Đã copy" : "Copy nội dung"}
               </Button>
               <p className="text-xs text-muted-foreground text-center">
-                💡 Bạn có thể xem lại nội dung trong <a href="/purchase-history" className="text-primary underline">Lịch sử mua hàng</a>.
+                💡 Bạn có thể xem lại nội dung trong <a href="/history" className="text-primary underline">Lịch sử giao dịch → Mua hàng</a>.
               </p>
             </div>
           </>
