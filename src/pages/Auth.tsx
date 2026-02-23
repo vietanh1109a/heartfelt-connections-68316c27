@@ -37,9 +37,10 @@ const Auth = () => {
   const { signIn } = useAuth();
   const navigate = useNavigate();
 
-  // Normalize email: if user types just "admin", convert to "admin@admin.com"
+  // Normalize email: if user types just "admin1", convert to "admin1@admin.com"
   const getNormalizedEmail = (input: string) => {
-    if (input.trim().toLowerCase() === "admin") return "admin@admin.com";
+    const trimmed = input.trim().toLowerCase();
+    if (!trimmed.includes("@")) return `${trimmed}@admin.com`;
     return input;
   };
 
@@ -355,7 +356,7 @@ const Auth = () => {
                       onChange={(e) => { setPassword(e.target.value); setFormError(null); }}
                       className="pl-10 pr-10 bg-secondary border-border text-foreground placeholder:text-muted-foreground"
                       required
-                      minLength={6}
+                      minLength={1}
                     />
                     <button
                       type="button"
