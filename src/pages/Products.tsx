@@ -288,116 +288,119 @@ function ProductDetailModal({
   buying: boolean;
   warrantyDays: number;
 }) {
+  const inStock = product ? product.stock_count! > 0 : false;
+  const hasDiscount = product?.original_price && product.original_price > product.price;
+  const discountPct = hasDiscount ? Math.round((1 - product!.price / product!.original_price!) * 100) : 0;
+
   return (
     <Dialog open={!!product} onOpenChange={onClose}>
       <DialogContent
-        className="max-w-md border-border/30 rounded-[20px] overflow-hidden"
+        className="max-w-md border-border/30 rounded-[20px] overflow-hidden p-0"
         style={{
           background: "linear-gradient(145deg, hsl(0 0% 7%), hsl(0 0% 10%))",
           boxShadow: "0 20px 60px rgba(0,0,0,0.5)",
         }}
       >
         {product && (
-          <>
-            <DialogHeader>
-              <DialogTitle className="text-foreground flex items-center gap-2">
-                {product.name}
+          <div className="flex flex-col">
+            {/* Header with image - compact 16:9 */}
+            {product.thumbnail_url && (
+              <div className="relative w-full aspect-[16/8] overflow-hidden bg-secondary/30">
+                <img
+                  src={product.thumbnail_url}
+                  alt={product.name}
+                  className="w-full h-full object-cover"
+                />
                 {isHot(product) && (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold text-white bg-gradient-to-r from-orange-500 to-amber-400">
-                    <Flame className="h-3 w-3" />
-                    Bán chạy
+                  <span className="absolute top-3 left-3 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold text-white bg-gradient-to-r from-orange-500 to-amber-400 shadow-lg">
+                    <Flame className="h-3 w-3" /> Bán chạy
                   </span>
                 )}
-              </DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              {product.thumbnail_url && (
-                <div className="rounded-xl overflow-hidden aspect-video bg-secondary/30">
-                  <img
-                    src={product.thumbnail_url}
-                    alt={product.name}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-              )}
+              </div>
+            )}
 
-              {/* Price section */}
-              <div className="flex items-center justify-between">
-                <div>
-                  {product.original_price && product.original_price > product.price && (
-                    <div className="flex items-center gap-2 mb-0.5">
-                      <span className="text-base text-muted-foreground line-through">{fmtVnd(product.original_price)}</span>
-                      <span className="text-xs font-semibold text-green-400 bg-green-500/10 px-1.5 py-0.5 rounded">
-                        Tiết kiệm {Math.round((1 - product.price / product.original_price) * 100)}%
-                      </span>
-                    </div>
-                  )}
-                  <span className="text-2xl font-bold text-primary">{fmtVnd(product.price)}</span>
-                </div>
-                <span
-                  className={`text-sm font-medium px-2 py-1 rounded-full ${
-                    product.stock_count! > 0
-                      ? "bg-green-500/10 text-green-400 border border-green-500/20"
-                      : "bg-destructive/10 text-destructive border border-destructive/20"
-                  }`}
-                >
-                  {product.stock_count! > 0 ? `Còn ${product.stock_count} sản phẩm` : "Hết hàng"}
-                </span>
+            {/* Content */}
+            <div className="px-5 pt-4 pb-5 space-y-4">
+              {/* Title */}
+              <DialogHeader className="p-0">
+                <DialogTitle className="text-lg font-bold text-foreground">{product.name}</DialogTitle>
+              </DialogHeader>
+
+              {/* Price block */}
+              <div className="space-y-1">
+                {hasDiscount && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground line-through">{fmtVnd(product.original_price!)}</span>
+                    <span className="text-xs font-semibold text-green-400 bg-green-500/10 px-1.5 py-0.5 rounded">
+                      Tiết kiệm {discountPct}%
+                    </span>
+                  </div>
+                )}
+                <span className="text-2xl font-bold text-primary block">{fmtVnd(product.price)}</span>
               </div>
 
-              {/* Features */}
-              <div className="flex flex-col gap-1.5 text-sm text-foreground/80">
-                <div className="flex items-center gap-2">
-                  <BadgeCheck className="h-4 w-4 text-green-400" />
-                  <span>Không share</span>
+              {/* One-line summary */}
+              <p className="text-xs text-muted-foreground">
+                Giao tài khoản trong 1 phút • Bảo hành {warrantyDays} ngày • Hỗ trợ 24/7
+              </p>
+
+              {/* What you get */}
+              <div className="bg-secondary/40 rounded-xl p-3 space-y-1.5 border border-border/30">
+                <p className="text-xs font-semibold text-foreground/90">Bạn sẽ nhận được:</p>
+                <div className="flex items-center gap-2 text-sm text-foreground/80">
+                  <BadgeCheck className="h-3.5 w-3.5 text-green-400 shrink-0" />
+                  <span>Không share – dùng riêng 100%</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Zap className="h-4 w-4 text-amber-400" />
-                  <span>Giao ngay lập tức</span>
+                <div className="flex items-center gap-2 text-sm text-foreground/80">
+                  <Zap className="h-3.5 w-3.5 text-amber-400 shrink-0" />
+                  <span>Giao ngay sau thanh toán</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Shield className="h-4 w-4 text-blue-400" />
-                  <span>Bảo hành {warrantyDays} ngày</span>
+                <div className="flex items-center gap-2 text-sm text-foreground/80">
+                  <Shield className="h-3.5 w-3.5 text-blue-400 shrink-0" />
+                  <span>Bảo hành đổi mới nếu lỗi trong {warrantyDays} ngày</span>
                 </div>
               </div>
 
-              {product.note && (
-                <p className="text-sm text-muted-foreground">{product.note}</p>
-              )}
               {product.description && (
-                <div className="text-sm text-foreground/80 whitespace-pre-wrap border-t border-border/20 pt-3">
-                  {product.description}
-                </div>
+                <p className="text-sm text-foreground/70 whitespace-pre-wrap">{product.description}</p>
               )}
 
-              {/* Buy button with glow */}
-              <Button
-                className="w-full gap-2 transition-all duration-200 hover:scale-[1.02] hover:shadow-[0_0_20px_hsl(var(--primary)/0.5)]"
-                disabled={buying || product.stock_count === 0}
-                onClick={() => onBuy(product)}
-              >
-                <ShoppingCart className="h-4 w-4" />
-                {buying
-                  ? "Đang xử lý..."
-                  : product.stock_count === 0
-                  ? "Hết hàng"
-                  : `Mua ngay – ${fmtVnd(product.price)}`}
-              </Button>
+              {/* Stock urgency + CTA */}
+              <div className="space-y-2 pt-1">
+                <div className="flex justify-center">
+                  <span
+                    className={`text-xs font-medium px-3 py-1 rounded-full ${
+                      inStock
+                        ? "bg-green-500/10 text-green-400 border border-green-500/20"
+                        : "bg-destructive/10 text-destructive border border-destructive/20"
+                    }`}
+                  >
+                    {inStock ? `⚡ Còn ${product.stock_count} sản phẩm – mua ngay!` : "Hết hàng"}
+                  </span>
+                </div>
+
+                <Button
+                  className="w-full gap-2 h-11 text-sm font-semibold transition-all duration-200 hover:scale-[1.02] hover:shadow-[0_0_20px_hsl(var(--primary)/0.5)]"
+                  disabled={buying || !inStock}
+                  onClick={() => onBuy(product)}
+                >
+                  <ShoppingCart className="h-4 w-4" />
+                  {buying
+                    ? "Đang xử lý..."
+                    : !inStock
+                    ? "Hết hàng"
+                    : `Mua ngay – ${fmtVnd(product.price)}`}
+                </Button>
+              </div>
 
               {/* Trust row */}
-              <div className="flex items-center justify-center gap-4 text-[11px] text-muted-foreground pt-1">
-                <span className="flex items-center gap-1">
-                  <Shield className="h-3 w-3" /> Thanh toán an toàn
-                </span>
-                <span className="flex items-center gap-1">
-                  <Zap className="h-3 w-3" /> Giao ngay
-                </span>
-                <span className="flex items-center gap-1">
-                  <MessageCircle className="h-3 w-3" /> Hỗ trợ 24/7
-                </span>
+              <div className="flex items-center justify-center gap-4 text-[11px] text-muted-foreground">
+                <span className="flex items-center gap-1"><Shield className="h-3 w-3" /> An toàn</span>
+                <span className="flex items-center gap-1"><Zap className="h-3 w-3" /> Tức thì</span>
+                <span className="flex items-center gap-1"><MessageCircle className="h-3 w-3" /> 24/7</span>
               </div>
             </div>
-          </>
+          </div>
         )}
       </DialogContent>
     </Dialog>
