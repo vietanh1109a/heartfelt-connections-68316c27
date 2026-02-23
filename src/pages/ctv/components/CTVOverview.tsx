@@ -72,6 +72,33 @@ export const CTVOverview = ({ profile }: Props) => {
           </Card>
         ))}
       </div>
+
+      {/* Fee policy table */}
+      <div className="space-y-3">
+        <h3 className="text-base font-semibold text-foreground">Chính sách phí nền tảng</h3>
+        <Card className="border-border/50 overflow-hidden">
+          <div className="grid grid-cols-2 text-xs font-semibold text-muted-foreground bg-secondary/50 px-4 py-2.5 uppercase tracking-wider">
+            <span>Đơn giá sản phẩm</span>
+            <span className="text-right">Phí nền tảng</span>
+          </div>
+          {[
+            { range: "< 100.000đ", fee: "10%", desc: "Đơn giá thấp" },
+            { range: "100.000đ – 300.000đ", fee: "7%", desc: "Đơn giá trung bình" },
+            { range: "> 300.000đ", fee: "5%", desc: "Đơn giá cao" },
+          ].map((row, i) => (
+            <div key={i} className="grid grid-cols-2 px-4 py-3 border-t border-border/30 text-sm items-center">
+              <div>
+                <span className="text-foreground font-medium">{row.range}</span>
+                <span className="text-xs text-muted-foreground ml-2">({row.desc})</span>
+              </div>
+              <span className="text-right text-primary font-bold">{row.fee}</span>
+            </div>
+          ))}
+        </Card>
+        <p className="text-xs text-muted-foreground italic">
+          💡 Phí được tính tự động dựa trên giá sản phẩm. Bạn nhận phần còn lại sau khi đơn hoàn tất.
+        </p>
+      </div>
     </div>
   );
 };
