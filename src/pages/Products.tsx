@@ -179,11 +179,16 @@ export default function Products({ filterCategory, embedded }: { filterCategory?
 
 /* ─── Product Card ─── */
 function ProductCard({ product, onClick }: { product: Product; onClick: () => void }) {
+  const inStock = product.stock_count! > 0;
+  const hasDiscount = product.original_price && product.original_price > product.price;
+  const discountPct = hasDiscount ? Math.round((1 - product.price / product.original_price!) * 100) : 0;
+
   return (
     <div
       onClick={onClick}
-      className="group cursor-pointer rounded-2xl border border-border/40 bg-card/60 overflow-hidden hover:border-primary/40 hover:shadow-[0_8px_30px_hsl(var(--primary)/0.15)] transition-all duration-300"
+      className="group cursor-pointer rounded-2xl border border-border/40 bg-card/60 overflow-hidden transition-all duration-300 hover:border-primary/40 hover:shadow-[0_8px_30px_hsl(var(--primary)/0.15)] hover:-translate-y-1"
     >
+      {/* Image */}
       <div className="aspect-square bg-secondary/30 relative overflow-hidden">
         {product.thumbnail_url ? (
           <img
@@ -197,40 +202,72 @@ function ProductCard({ product, onClick }: { product: Product; onClick: () => vo
             <Package className="h-10 w-10 text-muted-foreground/30" />
           </div>
         )}
-        {/* Out of stock overlay with blur */}
-        {product.stock_count === 0 && (
+        {/* Out of stock overlay */}
+        {!inStock && (
           <div className="absolute inset-0 backdrop-blur-sm bg-black/70 flex items-center justify-center">
             <span className="text-destructive font-bold text-sm">Hết hàng</span>
           </div>
         )}
-        {/* HOT badge */}
-        {isHot(product) && product.stock_count! > 0 && (
-          <div className="absolute top-2 right-2 flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold text-white bg-gradient-to-r from-orange-500 to-amber-400 shadow-lg">
-            <Flame className="h-3 w-3" />
-            Bán chạy
-          </div>
-        )}
-      </div>
-      <div className="p-3 space-y-1.5">
-        <h3 className="text-sm font-semibold text-foreground line-clamp-2">{product.name}</h3>
-        {product.note && (
-          <p className="text-xs text-muted-foreground line-clamp-1">{product.note}</p>
-        )}
-        <div className="flex items-center justify-between pt-1">
-          <div className="flex items-center gap-1.5 flex-wrap">
-            {product.original_price && product.original_price > product.price && (
-              <span className="text-muted-foreground line-through text-xs">{fmtVnd(product.original_price)}</span>
+        {/* Badges row */}
+        <div className="absolute top-2 left-2 right-2 flex items-start justify-between pointer-events-none">
+          <div className="flex flex-col gap-1">
+            {isHot(product) && inStock && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold text-white bg-gradient-to-r from-orange-500 to-amber-400 shadow-lg">
+                <Flame className="h-3 w-3" /> HOT
+              </span>
             )}
-            <span className="text-primary font-bold text-sm">{fmtVnd(product.price)}</span>
-            {product.original_price && product.original_price > product.price && (
-              <span className="text-[10px] font-semibold text-green-400">
-                -{Math.round((1 - product.price / product.original_price) * 100)}%
+            {hasDiscount && inStock && (
+              <span className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold text-white bg-gradient-to-r from-red-600 to-orange-500 shadow-lg">
+                -{discountPct}%
               </span>
             )}
           </div>
-          <span className={`text-xs ${product.stock_count! > 0 ? "text-green-400" : "text-destructive"}`}>
-            {product.stock_count! > 0 ? `Còn ${product.stock_count}` : "Hết hàng"}
-          </span>
+          {inStock && (
+            <span className="px-2 py-0.5 rounded-full text-[10px] font-medium text-green-300 bg-green-500/20 border border-green-500/30 backdrop-blur-sm">
+              Còn {product.stock_count}
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="p-3 space-y-2">
+        <h3 className="text-sm font-semibold text-foreground line-clamp-2">{product.name}</h3>
+
+        {/* Benefits */}
+        <div className="flex flex-col gap-0.5">
+          <span className="text-[10px] text-muted-foreground flex items-center gap-1"><Zap className="h-2.5 w-2.5 text-amber-400" /> Giao ngay sau thanh toán</span>
+          <span className="text-[10px] text-muted-foreground flex items-center gap-1"><Shield className="h-2.5 w-2.5 text-blue-400" /> Bảo hành đổi nếu lỗi</span>
+        </div>
+
+        {/* Price hierarchy */}
+        <div className="space-y-0.5 pt-1 border-t border-border/20">
+          <span className="text-primary font-bold text-base block">{fmtVnd(product.price)}</span>
+          {hasDiscount && (
+            <div className="flex items-center gap-1.5">
+              <span className="text-muted-foreground line-through text-xs">{fmtVnd(product.original_price!)}</span>
+              <span className="text-[10px] font-semibold text-green-400 bg-green-500/10 px-1.5 py-0.5 rounded">
+                Tiết kiệm {discountPct}%
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* CTA */}
+        <Button
+          size="sm"
+          className="w-full gap-1.5 text-xs h-8 transition-all duration-200 hover:scale-[1.02] hover:shadow-[0_0_15px_hsl(var(--primary)/0.4)]"
+          disabled={!inStock}
+        >
+          <ShoppingCart className="h-3.5 w-3.5" />
+          {inStock ? "Mua ngay" : "Hết hàng"}
+        </Button>
+
+        {/* Trust row */}
+        <div className="flex items-center justify-center gap-2 text-[9px] text-muted-foreground">
+          <span className="flex items-center gap-0.5"><Shield className="h-2.5 w-2.5" /> An toàn</span>
+          <span className="flex items-center gap-0.5"><Zap className="h-2.5 w-2.5" /> Tức thì</span>
+          <span className="flex items-center gap-0.5"><MessageCircle className="h-2.5 w-2.5" /> 24/7</span>
         </div>
       </div>
     </div>
