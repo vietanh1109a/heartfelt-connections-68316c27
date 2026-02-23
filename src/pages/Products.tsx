@@ -44,6 +44,7 @@ export default function Products({ filterCategory, embedded }: { filterCategory?
   const { data: products = [], isLoading } = useQuery({
     queryKey: ["products", filterCategory],
     queryFn: async () => {
+      // Fetch regular products
       let query = supabase
         .from("products")
         .select("*")
@@ -58,6 +59,7 @@ export default function Products({ filterCategory, embedded }: { filterCategory?
       if (error) throw error;
 
       const productIds = (data ?? []).map((p: any) => p.id);
+      let regularProducts: Product[] = [];
       if (productIds.length > 0) {
         const { data: stockData } = await supabase
           .from("product_items")
@@ -70,13 +72,60 @@ export default function Products({ filterCategory, embedded }: { filterCategory?
           stockMap[s.product_id] = (stockMap[s.product_id] || 0) + 1;
         });
 
-        return (data ?? []).map((p: any) => ({
+        regularProducts = (data ?? []).map((p: any) => ({
           ...p,
           stock_count: stockMap[p.id] || 0,
         }));
+      } else {
+        regularProducts = (data ?? []).map((p: any) => ({ ...p, stock_count: 0 }));
       }
 
-      return (data ?? []).map((p: any) => ({ ...p, stock_count: 0 }));
+      // Fetch approved CTV listings
+      let ctvQuery = supabase
+        .from("ctv_listings")
+        .select("*")
+        .eq("status", "approved")
+        .order("created_at", { ascending: false });
+
+      if (filterCategory) {
+        ctvQuery = ctvQuery.eq("category", filterCategory);
+      }
+
+      const { data: ctvData } = await ctvQuery;
+      const ctvListings = ctvData ?? [];
+
+      // Get stock for CTV listings
+      const ctvIds = ctvListings.map((l: any) => l.id);
+      let ctvStockMap: Record<string, number> = {};
+      if (ctvIds.length > 0) {
+        const { data: ctvStockData } = await supabase
+          .from("ctv_listing_items")
+          .select("listing_id")
+          .in("listing_id", ctvIds)
+          .eq("is_sold", false);
+
+        (ctvStockData ?? []).forEach((s: any) => {
+          ctvStockMap[s.listing_id] = (ctvStockMap[s.listing_id] || 0) + 1;
+        });
+      }
+
+      // Map CTV listings to Product interface
+      const ctvProducts: Product[] = ctvListings.map((l: any) => ({
+        id: l.id,
+        name: l.title,
+        description: l.description,
+        note: null,
+        category: l.category,
+        price: l.price,
+        original_price: null,
+        thumbnail_url: l.thumbnail_url,
+        is_active: true,
+        sold_count: l.total_sold,
+        stock_count: ctvStockMap[l.id] || 0,
+        _is_ctv: true,
+      }));
+
+      return [...regularProducts, ...ctvProducts];
     },
   });
 
