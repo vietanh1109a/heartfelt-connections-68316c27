@@ -356,7 +356,7 @@ const Auth = () => {
                       onChange={(e) => { setPassword(e.target.value); setFormError(null); }}
                       className="pl-10 pr-10 bg-secondary border-border text-foreground placeholder:text-muted-foreground"
                       required
-                      minLength={1}
+                      minLength={6}
                     />
                     <button
                       type="button"
