@@ -1,7 +1,7 @@
 import { memo } from "react";
 import {
   Play, Package, Gamepad2, History, Settings,
-  Wallet, Crown, Shield, Puzzle, LogOut, LogIn, AlertTriangle, UserPlus,
+  Wallet, Crown, Shield, Puzzle, LogOut, LogIn, AlertTriangle, UserPlus, LayoutDashboard,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import type { Tables } from "@/integrations/supabase/types";
@@ -16,6 +16,7 @@ interface SidebarProps {
   profile: Profile | null | undefined;
   userEmail: string | undefined;
   isAdmin: boolean;
+  isCTV: boolean;
   isVip: boolean;
   extensionVersion: string | null;
   extensionOutdated: boolean;
@@ -33,7 +34,7 @@ const mainNav: { key: TabKey; label: string; icon: typeof Play }[] = [
 ];
 
 const AppSidebar = memo(({
-  activeTab, onTabChange, profile, userEmail, isAdmin, isVip,
+  activeTab, onTabChange, profile, userEmail, isAdmin, isCTV, isVip,
   extensionVersion, extensionOutdated,
   onShowExtension, onShowDeposit, onSignOut, collapsed, onToggleCollapse,
 }: SidebarProps) => {
@@ -141,26 +142,48 @@ const AppSidebar = memo(({
             </button>
           ))}
 
-          {/* CTV Registration */}
-          <button
-            onClick={() => navigate("/ctv")}
-            className={`w-full flex items-center gap-3 rounded-lg text-sm font-medium text-primary/80 hover:text-primary hover:bg-sidebar-accent/50 transition-all relative group ${
-              collapsed ? "justify-center px-2 py-2.5" : "px-3 py-2.5"
-            }`}
-          >
-            <UserPlus className="h-4 w-4 shrink-0" />
-            {!collapsed && (
-              <>
-                <span className="flex-1 text-left">Đăng ký CTV</span>
-                <span className="text-[10px] text-primary font-bold">FREE</span>
-              </>
-            )}
-            {collapsed && (
-              <span className="absolute left-full ml-2 px-2 py-1 rounded-md bg-popover text-popover-foreground text-xs whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none shadow-lg z-50">
-                Đăng ký CTV FREE
-              </span>
-            )}
-          </button>
+          {/* CTV */}
+          {isCTV ? (
+            <button
+              onClick={() => navigate("/ctv/dashboard")}
+              className={`w-full flex items-center gap-3 rounded-lg text-sm font-medium text-green-400/80 hover:text-green-400 hover:bg-sidebar-accent/50 transition-all relative group ${
+                collapsed ? "justify-center px-2 py-2.5" : "px-3 py-2.5"
+              }`}
+            >
+              <LayoutDashboard className="h-4 w-4 shrink-0" />
+              {!collapsed && (
+                <>
+                  <span className="flex-1 text-left">CTV Dashboard</span>
+                  <span className="h-2 w-2 rounded-full bg-green-400 animate-pulse" />
+                </>
+              )}
+              {collapsed && (
+                <span className="absolute left-full ml-2 px-2 py-1 rounded-md bg-popover text-popover-foreground text-xs whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none shadow-lg z-50">
+                  CTV Dashboard
+                </span>
+              )}
+            </button>
+          ) : (
+            <button
+              onClick={() => navigate("/ctv")}
+              className={`w-full flex items-center gap-3 rounded-lg text-sm font-medium text-primary/80 hover:text-primary hover:bg-sidebar-accent/50 transition-all relative group ${
+                collapsed ? "justify-center px-2 py-2.5" : "px-3 py-2.5"
+              }`}
+            >
+              <UserPlus className="h-4 w-4 shrink-0" />
+              {!collapsed && (
+                <>
+                  <span className="flex-1 text-left">Đăng ký CTV</span>
+                  <span className="text-[10px] text-primary font-bold">FREE</span>
+                </>
+              )}
+              {collapsed && (
+                <span className="absolute left-full ml-2 px-2 py-1 rounded-md bg-popover text-popover-foreground text-xs whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none shadow-lg z-50">
+                  Đăng ký CTV FREE
+                </span>
+              )}
+            </button>
+          )}
 
           {isAdmin && (
             <button
