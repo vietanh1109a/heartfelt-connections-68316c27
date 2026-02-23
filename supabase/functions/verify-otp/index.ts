@@ -97,15 +97,11 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Hardcode: 10 lượt xem miễn phí, hạn 7 ngày
-    const bonusExpiresAt = new Date(Date.now() + FREE_BONUS_DAYS * 24 * 60 * 60 * 1000).toISOString();
-
     // Cấp lượt xem miễn phí + đánh dấu đã xác thực
     const { error: updateError } = await supabaseAdmin
       .from("profiles")
       .update({
-        bonus_balance: FREE_BONUS_VIEWS,
-        bonus_expires_at: bonusExpiresAt,
+        free_views_left: FREE_BONUS_VIEWS,
         is_verified: true,
       })
       .eq("user_id", userId);
@@ -135,7 +131,7 @@ Deno.serve(async (req) => {
         if (referrerId) {
           const { data: referrerProfile } = await supabaseAdmin
             .from("profiles")
-            .select("is_verified, bonus_balance")
+            .select("is_verified, free_views_left")
             .eq("user_id", referrerId)
             .single();
 
@@ -169,10 +165,10 @@ Deno.serve(async (req) => {
               }
 
               // Cộng lượt xem cho REFERRER (+5 lượt)
-              const referrerCurrentBonus = referrerProfile.bonus_balance ?? 0;
+              const referrerCurrentViews = referrerProfile.free_views_left ?? 0;
               await supabaseAdmin
                 .from("profiles")
-                .update({ bonus_balance: referrerCurrentBonus + REFERRAL_BONUS_VIEWS })
+                .update({ free_views_left: referrerCurrentViews + REFERRAL_BONUS_VIEWS })
                 .eq("user_id", referrerId);
 
               await supabaseAdmin.from("transactions").insert({
@@ -185,7 +181,7 @@ Deno.serve(async (req) => {
               // Cộng thêm lượt xem cho NGƯỜI MỚI (+5 lượt, tổng 15)
               await supabaseAdmin
                 .from("profiles")
-                .update({ bonus_balance: FREE_BONUS_VIEWS + REFERRAL_BONUS_VIEWS })
+                .update({ free_views_left: FREE_BONUS_VIEWS + REFERRAL_BONUS_VIEWS })
                 .eq("user_id", userId);
 
               await supabaseAdmin.from("transactions").insert({

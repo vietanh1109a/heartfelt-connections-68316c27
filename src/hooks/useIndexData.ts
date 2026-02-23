@@ -57,32 +57,19 @@ export function useIndexData() {
     queryKey: ["cookie-assignments", user?.id],
     queryFn: async () => {
       if (!user) return [];
-      const { data: sessionData } = await supabase.auth.getSession();
-      const accessToken = sessionData?.session?.access_token;
-      if (!accessToken) return [];
       
-      const supabaseUrl = "https://ckamflsosjzkyukajxzu.supabase.co";
-      const anonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNrYW1mbHNvc2p6a3l1a2FqeHp1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0NzMyOTYsImV4cCI6MjA4NzA0OTI5Nn0.G32dB8s_G2xAWohnqegON4cfQT2tswgM9RGFt5tmud0";
-      
-      const res = await fetch(`${supabaseUrl}/functions/v1/assign-cookie`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${accessToken}`,
-          "apikey": anonKey,
-        },
-        body: JSON.stringify({}),
+      const { data: result, error } = await supabase.functions.invoke("assign-cookie", {
+        body: {},
       });
-      const result = await res.json();
+      
       console.log("Cookie assignments result:", result);
       
-      if (!res.ok || result.error) {
-        console.error("Cookie assign/fetch failed:", result.error);
+      if (error || result?.error) {
+        console.error("Cookie assign/fetch failed:", error || result?.error);
         return [];
       }
       
-      // Return assignments from edge function response
-      const assignments = result.assignments || [];
+      const assignments = result?.assignments || [];
       return assignments.map((a: any) => ({
         id: a.id,
         cookie_stock: { is_active: a.is_active },
