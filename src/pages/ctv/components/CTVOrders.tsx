@@ -1,14 +1,16 @@
+import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
-import { ShoppingCart } from "lucide-react";
-import { format } from "date-fns";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
+import { ShoppingCart, CheckCircle, AlertTriangle, TrendingUp } from "lucide-react";
+import { format, subDays } from "date-fns";
 
-const statusMap: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
-  paid: { label: "Đã thanh toán", variant: "default" },
-  delivered: { label: "Đã giao", variant: "default" },
-  refunded: { label: "Hoàn tiền", variant: "destructive" },
+const statusConfig: Record<string, { label: string; className: string }> = {
+  paid: { label: "Đã thanh toán", className: "bg-blue-500/10 text-blue-400 border-blue-500/20" },
+  delivered: { label: "Đã giao", className: "bg-green-500/10 text-green-400 border-green-500/20" },
+  refunded: { label: "Hoàn tiền", className: "bg-orange-500/10 text-orange-400 border-orange-500/20" },
 };
 
 interface Props {
@@ -28,59 +30,125 @@ export const CTVOrders = ({ userId }: Props) => {
     },
   });
 
+  const stats = useMemo(() => {
+    if (!orders) return { total: 0, success: 0, refunded: 0, rate: "0" };
+    const success = orders.filter(o => o.status !== "refunded").length;
+    return {
+      total: orders.length,
+      success,
+      refunded: orders.filter(o => o.status === "refunded").length,
+      rate: orders.length > 0 ? ((success / orders.length) * 100).toFixed(1) : "0",
+    };
+  }, [orders]);
+
+  const chartData = useMemo(() => {
+    if (!orders) return [];
+    const map: Record<string, { date: string; orders: number }> = {};
+    for (let i = 6; i >= 0; i--) {
+      const d = format(subDays(new Date(), i), "dd/MM");
+      map[d] = { date: d, orders: 0 };
+    }
+    orders.forEach(o => {
+      const d = format(new Date(o.created_at), "dd/MM");
+      if (map[d]) map[d].orders += 1;
+    });
+    return Object.values(map);
+  }, [orders]);
+
+  const statCards = [
+    { label: "Tổng đơn", value: stats.total, icon: ShoppingCart, color: "text-foreground", bg: "bg-secondary" },
+    { label: "Thành công", value: stats.success, icon: CheckCircle, color: "text-green-400", bg: "bg-green-400/10" },
+    { label: "Hoàn tiền", value: stats.refunded, icon: AlertTriangle, color: "text-orange-400", bg: "bg-orange-400/10" },
+    { label: "Tỉ lệ TC", value: `${stats.rate}%`, icon: TrendingUp, color: "text-primary", bg: "bg-primary/10" },
+  ];
+
   return (
-    <div className="space-y-4">
-      <h2 className="text-xl font-bold text-foreground">Đơn hàng</h2>
+    <div className="space-y-5">
+      {/* Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {statCards.map((s, i) => {
+          const Icon = s.icon;
+          return (
+            <Card key={i} className="border-border/50">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs text-muted-foreground">{s.label}</span>
+                  <div className={`p-1.5 rounded-lg ${s.bg}`}><Icon className={`h-3.5 w-3.5 ${s.color}`} /></div>
+                </div>
+                <p className={`text-xl font-bold ${s.color}`}>{s.value}</p>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
 
-      {isLoading ? (
-        <div className="text-muted-foreground animate-pulse py-8 text-center">Đang tải...</div>
-      ) : !orders?.length ? (
-        <Card className="border-border/50">
-          <CardContent className="py-12 text-center space-y-3">
-            <ShoppingCart className="h-10 w-10 mx-auto text-muted-foreground" />
-            <p className="text-muted-foreground">Chưa có đơn hàng nào</p>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="space-y-3">
-          <div className="hidden md:grid grid-cols-[1fr_80px_80px_100px_100px] gap-3 px-4 text-xs font-semibold text-muted-foreground uppercase">
-            <span>Sản phẩm</span>
-            <span className="text-right">Giá</span>
-            <span className="text-right">Bạn nhận</span>
-            <span className="text-center">Trạng thái</span>
-            <span className="text-right">Ngày</span>
-          </div>
+      {/* Chart */}
+      <Card className="border-border/50">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-medium text-muted-foreground">Đơn hàng 7 ngày</CardTitle>
+        </CardHeader>
+        <CardContent className="h-[200px]">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={chartData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+              <XAxis dataKey="date" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
+              <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} allowDecimals={false} />
+              <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }} />
+              <Bar dataKey="orders" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </CardContent>
+      </Card>
 
-          {orders.map((o: any) => {
-            const st = statusMap[o.status] ?? { label: o.status, variant: "outline" as const };
-            return (
-              <Card key={o.id} className="border-border/50">
-                <CardContent className="p-4">
-                  <div className="md:grid md:grid-cols-[1fr_80px_80px_100px_100px] md:gap-3 md:items-center space-y-2 md:space-y-0">
-                    <div>
-                      <p className="font-medium text-foreground text-sm">{o.ctv_listings?.title ?? "—"}</p>
-                      <p className="text-xs text-muted-foreground font-mono">{o.id.slice(0, 8)}</p>
-                    </div>
-                    <p className="text-sm text-foreground text-right">{o.price.toLocaleString("vi-VN")}đ</p>
-                    <p className="text-sm text-primary text-right font-semibold">{o.ctv_earning.toLocaleString("vi-VN")}đ</p>
-                    <div className="text-center">
-                      <Badge variant={st.variant} className="text-xs">{st.label}</Badge>
-                    </div>
-                    <p className="text-xs text-muted-foreground text-right">
-                      {format(new Date(o.created_at), "dd/MM/yy HH:mm")}
-                    </p>
-                  </div>
-                  {o.status !== "refunded" && (
-                    <p className="text-xs text-muted-foreground mt-2 md:mt-1">
-                      Phí nền tảng: {o.platform_fee.toLocaleString("vi-VN")}đ • Bạn nhận: <span className="text-primary font-medium">{o.ctv_earning.toLocaleString("vi-VN")}đ</span>
-                    </p>
-                  )}
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
-      )}
+      {/* Orders Table */}
+      <Card className="border-border/50">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-medium text-muted-foreground">Danh sách đơn hàng</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <div className="py-8 text-center text-muted-foreground animate-pulse">Đang tải...</div>
+          ) : !orders?.length ? (
+            <div className="py-12 text-center space-y-2">
+              <ShoppingCart className="h-8 w-8 mx-auto text-muted-foreground/30" />
+              <p className="text-sm text-muted-foreground">Chưa có đơn hàng nào</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border/30 text-xs text-muted-foreground uppercase">
+                    <th className="text-left py-2.5 font-medium">Sản phẩm</th>
+                    <th className="text-right py-2.5 font-medium">Giá</th>
+                    <th className="text-right py-2.5 font-medium">Bạn nhận</th>
+                    <th className="text-center py-2.5 font-medium">Trạng thái</th>
+                    <th className="text-right py-2.5 font-medium">Ngày</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/20">
+                  {orders.map((o: any) => {
+                    const st = statusConfig[o.status] ?? { label: o.status, className: "bg-secondary text-muted-foreground" };
+                    return (
+                      <tr key={o.id} className="hover:bg-secondary/30 transition-colors">
+                        <td className="py-3">
+                          <p className="font-medium text-foreground">{o.ctv_listings?.title ?? "—"}</p>
+                          <p className="text-xs text-muted-foreground font-mono">{o.id.slice(0, 8)}</p>
+                        </td>
+                        <td className="text-right text-foreground">{o.price.toLocaleString("vi-VN")}đ</td>
+                        <td className="text-right text-primary font-semibold">{o.ctv_earning.toLocaleString("vi-VN")}đ</td>
+                        <td className="text-center">
+                          <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${st.className}`}>{st.label}</span>
+                        </td>
+                        <td className="text-right text-muted-foreground text-xs">{format(new Date(o.created_at), "dd/MM/yy HH:mm")}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 };
