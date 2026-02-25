@@ -1,13 +1,12 @@
 import { memo, useState } from "react";
-
 import { Play, Headphones, ShoppingBag } from "lucide-react";
 import PlanSelector from "./PlanSelector";
-
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { MIN_EXTENSION_VERSION, compareVersions, useCookieActions } from "@/hooks/useIndexData";
 import { useAppSettings } from "@/hooks/useAppSettings";
+import { useLanguage } from "@/lib/language";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Profile = Tables<"profiles">;
@@ -39,6 +38,7 @@ const WatchSection = memo(({
   const queryClient = useQueryClient();
   const { trySendCookie, checkExtensionAlive } = useCookieActions(user, extensionVersion, setExtensionVersion);
   const { linkSupport } = useAppSettings();
+  const { t } = useLanguage();
 
   const handleWatch = async () => {
     if (!user || !profile) return;
@@ -150,21 +150,18 @@ const WatchSection = memo(({
 
   return (
     <div className="space-y-4">
-      <h3 className="text-foreground font-bold text-lg">Chọn phương thức xem Netflix</h3>
+      <h3 className="text-foreground font-bold text-lg">{t("Chọn phương thức xem Netflix", "Choose how to watch Netflix")}</h3>
 
       {/* Xem trên PC */}
       <div className="border border-border/40 rounded-xl p-5 bg-card/40">
-        <h4 className="font-bold text-foreground text-base mb-1">Xem trên PC</h4>
+        <h4 className="font-bold text-foreground text-base mb-1">{t("Xem trên PC", "Watch on PC")}</h4>
         <p className="text-muted-foreground text-xs mb-4">
-          Mở Netflix ngay trên trình duyệt PC, nhanh chóng và tiện lợi. Mỗi lượt xem chỉ 500đ.
+          {t("Mở Netflix ngay trên trình duyệt PC, nhanh chóng và tiện lợi. Mỗi lượt xem chỉ 500đ.", "Open Netflix on your browser instantly. Only 500đ per view.")}
         </p>
         <div className="space-y-2.5">
           <button
             onClick={() => {
-              if (!user) {
-                window.location.href = "/auth";
-                return;
-              }
+              if (!user) { window.location.href = "/auth"; return; }
               isVip ? handleWatch() : onShowWatchModal();
             }}
             disabled={watchLoading}
@@ -172,28 +169,28 @@ const WatchSection = memo(({
             style={{ background: "linear-gradient(135deg, #E50914, #B20710)" }}
           >
             <Play className="h-4 w-4" />
-            {watchLoading ? "Đang xử lý..." : "Xem Netflix"}
+            {watchLoading ? t("Đang xử lý...", "Processing...") : t("Xem Netflix", "Watch Netflix")}
           </button>
           <button
             onClick={() => linkSupport ? window.open(linkSupport, "_blank") : undefined}
             className="w-full flex items-center justify-center gap-2 border border-border/40 rounded-lg py-3 font-medium text-sm text-foreground/80 hover:bg-secondary/40 transition-colors"
           >
             <Headphones className="h-4 w-4" />
-            Liên hệ hỗ trợ
+            {t("Liên hệ hỗ trợ", "Contact Support")}
           </button>
         </div>
         <div className="mt-4 pt-3 border-t border-border/20 flex items-center gap-2 text-xs">
-          <span className="text-muted-foreground">Trạng thái:</span>
+          <span className="text-muted-foreground">{t("Trạng thái:", "Status:")}</span>
           {extensionVersion ? (
             <span className={`font-medium ${extensionOutdated ? "text-yellow-500" : "text-green-500"}`}>
-              {extensionOutdated ? `Cần cập nhật (v${extensionVersion})` : `Đã cài đặt — v${extensionVersion}`}
+              {extensionOutdated ? t(`Cần cập nhật (v${extensionVersion})`, `Update needed (v${extensionVersion})`) : t(`Đã cài đặt — v${extensionVersion}`, `Installed — v${extensionVersion}`)}
             </span>
           ) : (
             <button
               onClick={onShowExtensionModal}
               className="px-2.5 py-1 rounded bg-red-500/10 border border-red-500/20 text-red-400 font-medium hover:bg-red-500/20 transition-colors"
             >
-              Extension chưa được cài. Xem hướng dẫn!
+              {t("Extension chưa được cài. Xem hướng dẫn!", "Extension not installed. See guide!")}
             </button>
           )}
         </div>
@@ -201,41 +198,40 @@ const WatchSection = memo(({
 
       {/* Kích hoạt TV */}
       <div className="border border-primary/30 rounded-xl p-5 bg-card/40">
-        <h4 className="font-bold text-foreground text-base mb-1">Kích hoạt TV</h4>
+        <h4 className="font-bold text-foreground text-base mb-1">{t("Kích hoạt TV", "Activate TV")}</h4>
         <p className="text-muted-foreground text-xs mb-4">
-          Bật TV → Mở Netflix → Nhập mã 8 số hiển thị trên TV vào ô bên dưới. Chi phí: 5 lượt xem hoặc 2.500đ.
+          {t("Bật TV → Mở Netflix → Nhập mã 8 số hiển thị trên TV vào ô bên dưới. Chi phí: 5 lượt xem hoặc 2.500đ.", "Turn on TV → Open Netflix → Enter the 8-digit code shown on TV. Cost: 5 views or 2,500đ.")}
         </p>
         <div className="flex gap-2 mb-3">
           <input
-            type="text"
-            maxLength={8}
-            value={tvCode}
+            type="text" maxLength={8} value={tvCode}
             onChange={(e) => setTvCode(e.target.value.replace(/\D/g, "").slice(0, 8))}
             onKeyDown={(e) => e.key === "Enter" && tvCode.length === 8 && onShowTvConfirm()}
-            placeholder="Nhập mã 8 số từ TV"
+            placeholder={t("Nhập mã 8 số từ TV", "Enter 8-digit TV code")}
             className="flex-1 bg-secondary/80 border border-border/40 rounded-lg px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 transition-colors tracking-widest font-mono"
           />
-          <button
-            onClick={onShowTvConfirm}
-            disabled={tvCode.length !== 8 || !extensionVersion}
+          <button onClick={onShowTvConfirm} disabled={tvCode.length !== 8 || !extensionVersion}
             className="rounded-lg px-5 py-2.5 font-bold text-sm text-primary-foreground transition-all hover:opacity-90 active:scale-[0.97] disabled:opacity-50"
             style={{ background: "linear-gradient(135deg, #E50914, #B20710)" }}
           >
-            Kích hoạt TV
+            {t("Kích hoạt TV", "Activate TV")}
           </button>
         </div>
         {!extensionVersion && (
-          <button
-            onClick={onShowExtensionModal}
+          <button onClick={onShowExtensionModal}
             className="w-full text-xs font-medium px-3 py-1.5 rounded bg-red-500/10 border border-red-500/20 text-red-400 mb-2 hover:bg-red-500/20 transition-colors text-left"
           >
-            ⚠ Cần cài Extension để dùng tính năng này. Xem hướng dẫn!
+            {t("⚠ Cần cài Extension để dùng tính năng này. Xem hướng dẫn!", "⚠ Extension required. See installation guide!")}
           </button>
         )}
         <div className="bg-secondary/40 border border-border/30 rounded-lg p-3 mt-3">
-          <p className="text-xs font-medium text-muted-foreground mb-2">Hướng dẫn kích hoạt thủ công (dùng PC)</p>
+          <p className="text-xs font-medium text-muted-foreground mb-2">{t("Hướng dẫn kích hoạt thủ công (dùng PC)", "Manual activation guide (PC)")}</p>
           <div className="space-y-1.5">
-            {['Trên PC: Bấm "Watch as Guest"', "Truy cập netflix.com/tv2", "Nhập mã TV → Nhấn Enter"].map((step, i) => (
+            {[
+              t('Trên PC: Bấm "Watch as Guest"', 'On PC: Click "Watch as Guest"'),
+              t("Truy cập netflix.com/tv2", "Go to netflix.com/tv2"),
+              t("Nhập mã TV → Nhấn Enter", "Enter TV code → Press Enter"),
+            ].map((step, i) => (
               <div key={i} className="flex items-center gap-2 text-xs text-muted-foreground">
                 <span className="h-5 w-5 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
                   <span className="text-primary font-bold text-[10px]">{i + 1}</span>
@@ -251,10 +247,10 @@ const WatchSection = memo(({
       <div className="border border-border/40 rounded-xl p-5 bg-card/40">
         <div className="flex items-center gap-2 mb-1">
           <ShoppingBag className="h-4 w-4 text-primary" />
-          <h4 className="font-bold text-foreground text-base">Mua gói chính chủ</h4>
+          <h4 className="font-bold text-foreground text-base">{t("Mua gói chính chủ", "Buy official plan")}</h4>
         </div>
         <p className="text-muted-foreground text-xs mb-4">
-          Đăng ký tài khoản Netflix chính chủ với đầy đủ tính năng và nhiều profile.
+          {t("Đăng ký tài khoản Netflix chính chủ với đầy đủ tính năng và nhiều profile.", "Get your own Netflix account with full features and multiple profiles.")}
         </p>
         <PlanSelector />
       </div>

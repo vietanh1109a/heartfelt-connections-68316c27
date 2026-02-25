@@ -4,7 +4,11 @@ import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
-import { CheckCircle2, Crown, Menu } from "lucide-react";
+import { CheckCircle2, Crown, Menu, ChevronDown, Globe } from "lucide-react";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useLanguage } from "@/lib/language";
 import Products from "./Products";
 import { Button } from "@/components/ui/button";
@@ -41,14 +45,28 @@ function TopBar({ sidebarCollapsed, onToggleSidebar, isVip, profile, userEmail }
           </span>
         )}
 
-        {/* Language toggle pill */}
-        <button
-          onClick={() => setLang(lang === "vi" ? "en" : "vi")}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-border/30 bg-card/60 backdrop-blur-md text-xs font-medium transition-all duration-200 hover:bg-accent/60 shadow-sm"
-        >
-          <span className="text-sm leading-none">{lang === "vi" ? "🇻🇳" : "🇬🇧"}</span>
-          <span className="text-foreground/80">{lang === "vi" ? "VI" : "EN"}</span>
-        </button>
+        {/* Premium language pill dropdown */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button className="h-9 flex items-center gap-2 px-3.5 rounded-full font-medium text-sm transition-all duration-200 border border-border/[0.1] bg-secondary/40 hover:bg-secondary/70 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40">
+              <Globe className="h-4 w-4 text-muted-foreground" />
+              <span className="text-foreground">{lang === "vi" ? "VI" : "EN"}</span>
+              <ChevronDown className="h-3 w-3 text-muted-foreground" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-44 bg-card border-border/40">
+            <DropdownMenuItem onClick={() => setLang("vi")} className="cursor-pointer gap-2.5">
+              <span className="text-base">🇻🇳</span>
+              <span className="flex-1">Tiếng Việt</span>
+              {lang === "vi" && <span className="text-primary text-xs">✓</span>}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setLang("en")} className="cursor-pointer gap-2.5">
+              <span className="text-base">🇬🇧</span>
+              <span className="flex-1">English</span>
+              {lang === "en" && <span className="text-primary text-xs">✓</span>}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
 
         <div className="text-right hidden sm:block">
           <p className="text-sm font-medium text-foreground">{profile?.display_name || "User"}</p>
@@ -74,6 +92,7 @@ const Index = () => {
     isVip, vipExpiresAt, maxSwitches, switchesLeft,
     vipPlans,
   } = useIndexData();
+  const { t } = useLanguage();
 
   const { data: isCTV } = useQuery({
     queryKey: ["is-ctv", user?.id],
@@ -358,7 +377,10 @@ const Index = () => {
                     transition={{ duration: 0.5 }}
                     className="text-3xl md:text-4xl font-bold text-foreground"
                   >
-                    Xin chào, {profile?.display_name || "bạn"} 👋
+                    {t(
+                      `Xin chào, ${profile?.display_name || "bạn"} 👋`,
+                      `Hello, ${profile?.display_name || "there"} 👋`
+                    )}
                   </motion.h2>
                   <motion.p
                     initial={{ opacity: 0 }}
@@ -366,7 +388,7 @@ const Index = () => {
                     transition={{ delay: 0.15, duration: 0.4 }}
                     className="text-muted-foreground mt-2 text-sm"
                   >
-                    Sẵn sàng xem phim chưa?
+                    {t("Sẵn sàng xem phim chưa?", "Ready to watch?")}
                   </motion.p>
                 </section>
                 <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">

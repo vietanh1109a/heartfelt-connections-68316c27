@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Crown, Star, HelpCircle, ExternalLink, CreditCard, RefreshCw, Headphones, Eye, LogIn, Puzzle } from "lucide-react";
 import type { Tables } from "@/integrations/supabase/types";
 import { useAppSettings } from "@/hooks/useAppSettings";
+import { useLanguage } from "@/lib/language";
 
 type Profile = Tables<"profiles">;
 
@@ -34,6 +35,7 @@ const SidePanel = memo(({
   onShowDeposit, isGuest = false, extensionVersion, onShowExtensionModal: _onShowExtensionModal,
 }: Props) => {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const { isLoading: settingsLoading, linkExtension, linkGuideYoutube, linkFacebook, linkInstagram, linkTelegram, linkTiktok, linkThreads, linkSupport } = useAppSettings();
 
   const permanentBalance = profile?.balance ?? 0;
@@ -51,15 +53,15 @@ const SidePanel = memo(({
       {/* Plan info card — Guest or Logged-in */}
       <div className="border border-border/40 rounded-xl overflow-hidden bg-card/40">
         <div className="px-5 pt-5 pb-2">
-          <h3 className="text-foreground font-bold text-sm mb-4">Account Overview</h3>
+          <h3 className="text-foreground font-bold text-sm mb-4">{t("Tổng quan tài khoản", "Account Overview")}</h3>
         </div>
 
         {isGuest ? (
           /* ── Guest state ── */
           <div className="px-5 pb-5 space-y-4">
             <div className="text-center py-2">
-              <p className="text-foreground font-bold text-base">Chưa đăng nhập</p>
-              <p className="text-muted-foreground text-sm mt-1">Đăng nhập để xem Netflix miễn phí</p>
+              <p className="text-foreground font-bold text-base">{t("Chưa đăng nhập", "Not logged in")}</p>
+              <p className="text-muted-foreground text-sm mt-1">{t("Đăng nhập để xem Netflix miễn phí", "Sign in to watch Netflix for free")}</p>
             </div>
 
             <button
@@ -68,7 +70,7 @@ const SidePanel = memo(({
               style={{ background: "linear-gradient(135deg, #E50914, #B20710)" }}
             >
               <LogIn className="h-4 w-4" />
-              Đăng nhập / Đăng ký
+              {t("Đăng nhập / Đăng ký", "Sign In / Sign Up")}
             </button>
 
             {/* Extension status */}
@@ -124,7 +126,7 @@ const SidePanel = memo(({
                     <Star className="h-3 w-3" /> FREE
                   </span>
                 )}
-                <span className="text-foreground font-semibold text-sm">{isVip ? "Thành viên VIP" : "Gói miễn phí"}</span>
+                <span className="text-foreground font-semibold text-sm">{isVip ? t("Thành viên VIP", "VIP Member") : t("Gói miễn phí", "Free Plan")}</span>
               </div>
               <button
                 onClick={onShowInfo}
@@ -137,13 +139,13 @@ const SidePanel = memo(({
             {isVip ? (
               <div className="space-y-0">
                 {[
-                  { label: "Số dư:", value: fmtVnd(permanentBalance), color: "text-green-400" },
-                  { label: "Lượt xem VIP:", value: vipViews >= 999999 ? "Không giới hạn ∞" : `${vipViews} lượt`, color: "text-yellow-400", icon: <Eye className="h-3 w-3 text-yellow-400 inline mr-1" /> },
-                  { label: "Lượt xem miễn phí:", value: `${freeViews} lượt`, color: "text-primary", icon: <Eye className="h-3 w-3 text-primary inline mr-1" /> },
-                  { label: "VIP hết hạn:", value: vipExpiresAt ? vipExpiresAt.toLocaleDateString("vi-VN") : "—", color: "text-yellow-400" },
-                  { label: "Còn lại:", value: vipExpiresAt ? `${Math.max(0, Math.ceil((vipExpiresAt.getTime() - Date.now()) / (1000 * 60 * 60 * 24)))} ngày` : "—", color: "text-yellow-400" },
-                  { label: "Tài khoản đang dùng:", value: `${activeCookieCount}`, color: "text-yellow-400" },
-                  { label: "Lượt đổi tháng:", value: `${switchesLeft}/${maxSwitches === Infinity ? "∞" : maxSwitches}`, color: "text-foreground" },
+                  { label: t("Số dư:", "Balance:"), value: fmtVnd(permanentBalance), color: "text-green-400" },
+                  { label: t("Lượt xem VIP:", "VIP views:"), value: vipViews >= 999999 ? t("Không giới hạn ∞", "Unlimited ∞") : `${vipViews} ${t("lượt", "views")}`, color: "text-yellow-400", icon: <Eye className="h-3 w-3 text-yellow-400 inline mr-1" /> },
+                  { label: t("Lượt xem miễn phí:", "Free views:"), value: `${freeViews} ${t("lượt", "views")}`, color: "text-primary", icon: <Eye className="h-3 w-3 text-primary inline mr-1" /> },
+                  { label: t("VIP hết hạn:", "VIP expires:"), value: vipExpiresAt ? vipExpiresAt.toLocaleDateString("vi-VN") : "—", color: "text-yellow-400" },
+                  { label: t("Còn lại:", "Remaining:"), value: vipExpiresAt ? `${Math.max(0, Math.ceil((vipExpiresAt.getTime() - Date.now()) / (1000 * 60 * 60 * 24)))} ${t("ngày", "days")}` : "—", color: "text-yellow-400" },
+                  { label: t("Tài khoản đang dùng:", "Active accounts:"), value: `${activeCookieCount}`, color: "text-yellow-400" },
+                  { label: t("Lượt đổi tháng:", "Monthly switches:"), value: `${switchesLeft}/${maxSwitches === Infinity ? "∞" : maxSwitches}`, color: "text-foreground" },
                 ].map((row, i) => (
                   <div key={i} className="flex items-center justify-between py-3 border-b border-border/20 last:border-0">
                     <span className="text-sm text-muted-foreground">{row.label}</span>
@@ -168,30 +170,30 @@ const SidePanel = memo(({
             ) : (
               <div className="space-y-0">
                 <div className="flex items-center justify-between py-3 border-b border-border/20">
-                  <span className="text-sm text-muted-foreground">Số dư:</span>
+                  <span className="text-sm text-muted-foreground">{t("Số dư:", "Balance:")}</span>
                   <span className="text-sm font-semibold text-green-400">{fmtVnd(permanentBalance)}</span>
                 </div>
                 <div className="mt-2 mb-1 px-2 py-1.5 bg-green-500/10 border border-green-500/20 rounded-lg flex justify-between text-xs">
-                  <span className="text-green-400/80 flex items-center gap-1"><Eye className="h-3 w-3" /> Lượt xem miễn phí:</span>
-                  <span className="text-green-400 font-semibold">{freeViews} lượt</span>
+                  <span className="text-green-400/80 flex items-center gap-1"><Eye className="h-3 w-3" /> {t("Lượt xem miễn phí:", "Free views:")}</span>
+                  <span className="text-green-400 font-semibold">{freeViews} {t("lượt", "views")}</span>
                 </div>
                 <div className="flex items-center justify-between py-3 border-b border-border/20">
-                  <span className="text-sm text-muted-foreground">Hết hạn lượt xem:</span>
+                  <span className="text-sm text-muted-foreground">{t("Hết hạn lượt xem:", "Views expire:")}</span>
                   <span className={`text-sm font-semibold ${isExpired ? "text-destructive" : "text-green-400"}`}>
                     {isExpired ? `Hết hạn (${expiresDateStr})` : `${daysLeft} ngày (${expiresDateStr})`}
                   </span>
                 </div>
                 <div className="flex items-center justify-between py-3 border-b border-border/20">
-                  <span className="text-sm text-muted-foreground">Tài khoản đang dùng:</span>
+                  <span className="text-sm text-muted-foreground">{t("Tài khoản đang dùng:", "Active accounts:")}</span>
                   <span className="text-sm font-semibold text-muted-foreground">{activeCookieCount}</span>
                 </div>
                 <div className="flex items-center justify-between py-3 border-b border-border/20 last:border-0">
-                  <span className="text-sm text-muted-foreground">Lượt đổi tháng:</span>
+                  <span className="text-sm text-muted-foreground">{t("Lượt đổi tháng:", "Monthly switches:")}</span>
                   <span className="text-sm font-semibold text-foreground">{switchesLeft}/{maxSwitches === Infinity ? "∞" : maxSwitches}</span>
                 </div>
                 <button onClick={onShowVipPlans} className="w-full mt-3 py-2.5 rounded-lg text-sm font-bold text-foreground border border-yellow-500/40 hover:bg-yellow-500/10 hover:border-yellow-500/60 transition-all flex items-center justify-center gap-2">
                   <Crown className="h-4 w-4 text-yellow-400" />
-                  <span>Nâng cấp <span className="text-yellow-400">VIP</span></span>
+                  <span>{t("Nâng cấp", "Upgrade")} <span className="text-yellow-400">VIP</span></span>
                 </button>
               </div>
             )}
@@ -211,7 +213,7 @@ const SidePanel = memo(({
           style={{ background: "linear-gradient(135deg, #E50914, #B20710)" }}
         >
           <CreditCard className="h-4 w-4" />
-          Nạp thêm
+          {t("NẠP THÊM", "DEPOSIT")}
         </button>
 
         {/* Báo hỏng — ẩn khi guest */}
@@ -227,14 +229,14 @@ const SidePanel = memo(({
                 <RefreshCw className="h-4 w-4 text-yellow-400 group-hover:rotate-180 transition-transform duration-500" />
               </div>
               <div className="flex-1 text-left">
-                <p className="text-sm font-semibold text-foreground/90">Báo hỏng & Đổi tài khoản</p>
-                <p className="text-xs text-muted-foreground mt-0.5">Tự động cấp tài khoản mới ngay lập tức</p>
+                <p className="text-sm font-semibold text-foreground/90">{t("Báo hỏng & Đổi tài khoản", "Report & Switch Account")}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{t("Tự động cấp tài khoản mới ngay lập tức", "Automatically get a new account instantly")}</p>
               </div>
               <div className="flex-shrink-0 flex flex-col items-end gap-0.5">
                 <span className={`text-sm font-bold ${switchesLeft > 0 ? "text-yellow-400" : "text-muted-foreground"}`}>
                   {switchesLeft}/{maxSwitches === Infinity ? "∞" : maxSwitches}
                 </span>
-                <span className="text-xs text-muted-foreground">lượt</span>
+                <span className="text-xs text-muted-foreground">{t("lượt", "left")}</span>
               </div>
             </div>
           </button>
@@ -259,10 +261,10 @@ const SidePanel = memo(({
         <div className="relative">
           <div className="flex items-center gap-2 mb-2">
             <span className="text-lg">🎁</span>
-            <h4 className="text-sm font-bold text-foreground">Theo dõi để nhận lượt xem miễn phí!</h4>
+            <h4 className="text-sm font-bold text-foreground">{t("Theo dõi để nhận lượt xem miễn phí!", "Follow us for free views!")}</h4>
           </div>
           <p className="text-xs text-muted-foreground mb-4">
-            Follow các kênh của chúng tôi để nhận được <span className="text-primary font-semibold">5 lượt xem</span> miễn phí.
+            {t("Follow các kênh của chúng tôi để nhận được", "Follow our channels to receive")} <span className="text-primary font-semibold">{t("5 lượt xem", "5 free views")}</span> {t("miễn phí.", ".")}
           </p>
           <div className="flex items-center gap-2">
             {[
