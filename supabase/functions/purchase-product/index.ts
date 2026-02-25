@@ -22,7 +22,6 @@ Deno.serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-    // User client to get user
     const userClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, {
       global: { headers: { Authorization: authHeader } },
     });
@@ -42,7 +41,6 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Admin client for all DB operations
     const admin = createClient(supabaseUrl, serviceKey);
 
     // Get product
@@ -100,16 +98,25 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Mark item as sold
-    const { error: updateItemErr } = await admin
+    // Mark item as sold with optimistic lock — CHECK that exactly 1 row was updated
+    const { data: updatedItems, error: updateItemErr } = await admin
       .from("product_items")
       .update({ is_sold: true, sold_to: user.id, sold_at: new Date().toISOString() })
       .eq("id", item.id)
-      .eq("is_sold", false); // optimistic lock
+      .eq("is_sold", false)
+      .select("id");
 
     if (updateItemErr) {
       return new Response(JSON.stringify({ error: "Lỗi xử lý đơn hàng" }), {
         status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Race condition guard: if no rows were updated, another request already claimed this item
+    if (!updatedItems || updatedItems.length === 0) {
+      return new Response(JSON.stringify({ error: "Sản phẩm vừa được người khác mua. Vui lòng thử lại." }), {
+        status: 409,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
