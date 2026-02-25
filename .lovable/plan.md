@@ -1,47 +1,26 @@
 
-# Fix Build Errors and "Infinity" Display
 
-## Problem 1: "Infinity/Infinity" showing for switch count
-Admin users get `maxSwitches = Infinity` (JavaScript value), which renders as literal "Infinity" text in the UI. Need to display "Unlimited" or the infinity symbol instead.
+## Cập nhật Cookie Stock Tab
 
-## Problem 2: Build errors in edge functions
+### Vấn đề hiện tại
+- Dữ liệu cookie được phân trang (30/trang), nên các nút Export Live, Check All, Clear Die chỉ hoạt động trên trang đang xem, không phải toàn bộ.
+- Chưa có nút "Clear All" để xóa tất cả cookie.
 
-### 2a. `assign-cookie/index.ts` (lines 56-57)
-The Supabase join `cookie_stock!inner(...)` returns an **array**, not an object. So `first.cookie_stock` is `{ id, is_active, cookie_data }[]`, not a single object. Need to access `first.cookie_stock[0]` or cast properly.
+### Thay đổi
 
-### 2b. `report-cookie/index.ts`, `send-otp/index.ts`, `verify-otp/index.ts`
-`error` in catch blocks is typed as `unknown` in strict TypeScript/Deno. Need to use `(error as Error).message`.
+**File: `src/pages/admin/components/CookieStockTab.tsx`**
 
----
+1. **Thêm nút "Clear All"**: Xóa toàn bộ cookie trong bảng `cookie_stock` (có dialog xác nhận để tránh xóa nhầm).
 
-## Changes
+2. **Sửa "Export Live"**: Thay vì dùng biến `cookies` (chỉ chứa trang hiện tại), sẽ query trực tiếp Supabase lấy tất cả cookie có `is_active = true` rồi xuất ZIP.
 
-### 1. `src/pages/index/SidePanel.tsx`
-- Line 146 (VIP view): Change `{switchesLeft}/{maxSwitches}` to show "Unlimited" or the infinity symbol when `maxSwitches` is `Infinity`
-- Line 190 (FREE view): Same change
-- Line 235 (report button): Same change
+3. **Sửa "Check All"**: Tương tự, query tất cả cookie active từ Supabase thay vì chỉ dùng dữ liệu trang hiện tại, rồi gửi batch check qua extension.
 
-### 2. `src/pages/index/IndexModals.tsx`
-- Lines 507, 521: Format `maxSwitches` display to handle Infinity
+### Chi tiết kỹ thuật
 
-### 3. `supabase/functions/assign-cookie/index.ts`
-- Lines 56-57: Change `first.cookie_stock?.is_active` to `first.cookie_stock?.[0]?.is_active` (and same for `cookie_data`)
+- `handleClearAll`: Gọi `supabase.from("cookie_stock").delete().neq("id", "")` (xóa tất cả), có dialog confirm trước khi thực hiện.
+- `handleExportLive`: Fetch tất cả cookie active bằng query không phân trang: `supabase.from("cookie_stock").select("*").eq("is_active", true)`, sau đó tạo ZIP.
+- `handleCheckAll`: Fetch tất cả cookie active không phân trang, rồi gửi batch `CHECK_LIVE_BATCH` qua `postMessage`.
+- Thêm state `clearAllConfirm` cho dialog xác nhận Clear All.
+- Nút Clear All sẽ có style destructive, đặt cạnh nút Clear Die.
 
-### 4. `supabase/functions/report-cookie/index.ts`
-- Line 255: Change `error.message` to `(error as Error).message`
-
-### 5. `supabase/functions/send-otp/index.ts`
-- Line 122: Change `error.message` to `(error as Error).message`
-
-### 6. `supabase/functions/verify-otp/index.ts`
-- Line 213: Change `error.message` to `(error as Error).message`
-
----
-
-## Technical Details
-
-For the Infinity display, a helper approach will be used inline:
-- When `maxSwitches === Infinity`, display the infinity symbol or "Unlimited" instead of the raw number
-- Format: `{switchesLeft}/Unlimited` for admins, `{switchesLeft}/{maxSwitches}` for others
-
-For the assign-cookie join issue, Supabase's `!inner` join with a singular foreign key actually returns a single object in practice, but TypeScript infers it as an array. Using `(first as any).cookie_stock?.is_active` or indexing `[0]` will fix the type error.
