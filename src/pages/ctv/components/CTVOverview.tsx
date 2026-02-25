@@ -11,17 +11,24 @@ import {
 interface Props {
   profile: {
     user_id: string;
-    total_sales: number;
-    total_orders: number;
-    pending_balance: number;
-    available_balance: number;
-    refund_count: number;
+    total_earned?: number;
+    balance?: number;
+    commission_rate?: number;
+    status?: string;
+    display_name?: string;
+    [key: string]: any;
   };
 }
 
 export const CTVOverview = ({ profile }: Props) => {
-  const refundRate = profile.total_orders > 0
-    ? ((profile.refund_count / profile.total_orders) * 100).toFixed(1)
+  const totalSales = profile.total_earned ?? 0;
+  const availableBalance = profile.balance ?? 0;
+  const pendingBalance = 0; // no pending_balance column
+  const refundCount = 0;
+  const totalOrders = 0;
+
+  const refundRate = totalOrders > 0
+    ? ((refundCount / totalOrders) * 100).toFixed(1)
     : "0.0";
 
   // Fetch listings count
@@ -70,7 +77,7 @@ export const CTVOverview = ({ profile }: Props) => {
     queryFn: async () => {
       const { data } = await supabase
         .from("ctv_orders")
-        .select("id, price, ctv_earning, status, created_at, ctv_listings(title)")
+        .select("id, amount, commission, status, created_at, listing_id")
         .eq("ctv_user_id", profile.user_id)
         .order("created_at", { ascending: false })
         .limit(8);
@@ -79,9 +86,9 @@ export const CTVOverview = ({ profile }: Props) => {
   });
 
   const stats = [
-    { label: "Tổng doanh thu", value: `${profile.total_sales.toLocaleString("vi-VN")}đ`, icon: DollarSign, color: "text-primary", bg: "bg-primary/10" },
-    { label: "Pending", value: `${profile.pending_balance.toLocaleString("vi-VN")}đ`, icon: Clock, color: "text-yellow-400", bg: "bg-yellow-400/10" },
-    { label: "Khả dụng", value: `${profile.available_balance.toLocaleString("vi-VN")}đ`, icon: Wallet, color: "text-green-400", bg: "bg-green-400/10" },
+    { label: "Tổng doanh thu", value: `${totalSales.toLocaleString("vi-VN")}đ`, icon: DollarSign, color: "text-primary", bg: "bg-primary/10" },
+    { label: "Pending", value: `${pendingBalance.toLocaleString("vi-VN")}đ`, icon: Clock, color: "text-yellow-400", bg: "bg-yellow-400/10" },
+    { label: "Khả dụng", value: `${availableBalance.toLocaleString("vi-VN")}đ`, icon: Wallet, color: "text-green-400", bg: "bg-green-400/10" },
     { label: "Đang bán", value: `${listingStats?.active ?? 0}`, icon: Package, color: "text-blue-400", bg: "bg-blue-400/10" },
     { label: "Chờ duyệt", value: `${listingStats?.pending ?? 0}`, icon: CheckCircle, color: "text-orange-400", bg: "bg-orange-400/10" },
     { label: "Tỉ lệ hoàn", value: `${refundRate}%`, icon: AlertTriangle, color: parseFloat(refundRate) > 10 ? "text-destructive" : "text-muted-foreground", bg: parseFloat(refundRate) > 10 ? "bg-destructive/10" : "bg-secondary" },
@@ -180,13 +187,13 @@ export const CTVOverview = ({ profile }: Props) => {
                     <div key={o.id} className="flex items-center gap-3 py-2.5">
                       {activityIcon(o.status)}
                       <div className="flex-1 min-w-0">
-                        <p className="text-xs font-medium text-foreground truncate">{o.ctv_listings?.title ?? "Sản phẩm"}</p>
+                        <p className="text-xs font-medium text-foreground truncate">Sản phẩm</p>
                         <p className="text-[10px] text-muted-foreground">
                           {o.status === "refunded" ? "Hoàn tiền" : "Đơn thành công"} • {format(new Date(o.created_at), "dd/MM HH:mm")}
                         </p>
                       </div>
                       <span className={`text-xs font-semibold ${o.status === "refunded" ? "text-orange-400" : "text-primary"}`}>
-                        {o.status === "refunded" ? "-" : "+"}{o.ctv_earning.toLocaleString("vi-VN")}đ
+                        {o.status === "refunded" ? "-" : "+"}{(o.commission ?? 0).toLocaleString("vi-VN")}đ
                       </span>
                     </div>
                   ))}
