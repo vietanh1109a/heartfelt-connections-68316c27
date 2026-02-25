@@ -305,7 +305,7 @@ export function CookieStockTab() {
 
   // === Clear All cookies ===
   const handleClearAll = async () => {
-    const { error } = await supabase.from("cookie_stock").delete().gte("created_at", "1970-01-01");
+    const { error } = await supabase.from("cookie_stock").delete().gte("updated_at", "1970-01-01");
     if (error) { toast.error(error.message); return; }
     toast.success("Đã xóa tất cả cookie");
     setClearAllConfirm(false);
