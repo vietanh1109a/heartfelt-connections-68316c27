@@ -2,87 +2,87 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600;700;800&family=Bebas+Neue&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
 @layer base {
   :root {
-    --background: 240 6% 7%;
-    --foreground: 0 0% 95%;
+    --background: 220 14% 6%;
+    --foreground: 210 20% 96%;
 
-    --card: 240 5% 10%;
-    --card-foreground: 0 0% 95%;
+    --card: 220 13% 9%;
+    --card-foreground: 210 20% 96%;
 
-    --popover: 240 5% 10%;
-    --popover-foreground: 0 0% 95%;
+    --popover: 220 13% 9%;
+    --popover-foreground: 210 20% 96%;
 
-    --primary: 357 92% 47%;
+    --primary: 0 72% 51%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 240 4% 14%;
-    --secondary-foreground: 0 0% 95%;
+    --secondary: 220 10% 13%;
+    --secondary-foreground: 210 20% 96%;
 
-    --muted: 240 4% 14%;
-    --muted-foreground: 240 5% 50%;
+    --muted: 220 10% 13%;
+    --muted-foreground: 220 10% 46%;
 
-    --accent: 240 4% 16%;
-    --accent-foreground: 0 0% 95%;
+    --accent: 220 10% 15%;
+    --accent-foreground: 210 20% 96%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 240 4% 16%;
-    --input: 240 4% 16%;
-    --ring: 357 92% 47%;
+    --border: 220 10% 14%;
+    --input: 220 10% 14%;
+    --ring: 0 72% 51%;
 
-    --radius: 1rem;
+    --radius: 0.75rem;
 
-    --sidebar-background: 240 6% 8%;
-    --sidebar-foreground: 0 0% 95%;
-    --sidebar-primary: 357 92% 47%;
+    --sidebar-background: 220 14% 7%;
+    --sidebar-foreground: 210 20% 96%;
+    --sidebar-primary: 0 72% 51%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 4% 14%;
-    --sidebar-accent-foreground: 0 0% 95%;
-    --sidebar-border: 240 4% 16%;
-    --sidebar-ring: 357 92% 47%;
+    --sidebar-accent: 220 10% 13%;
+    --sidebar-accent-foreground: 210 20% 96%;
+    --sidebar-border: 220 10% 14%;
+    --sidebar-ring: 0 72% 51%;
   }
 
   .dark {
-    --background: 240 6% 7%;
-    --foreground: 0 0% 95%;
+    --background: 220 14% 6%;
+    --foreground: 210 20% 96%;
 
-    --card: 240 5% 10%;
-    --card-foreground: 0 0% 95%;
+    --card: 220 13% 9%;
+    --card-foreground: 210 20% 96%;
 
-    --popover: 240 5% 10%;
-    --popover-foreground: 0 0% 95%;
+    --popover: 220 13% 9%;
+    --popover-foreground: 210 20% 96%;
 
-    --primary: 357 92% 47%;
+    --primary: 0 72% 51%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 240 4% 14%;
-    --secondary-foreground: 0 0% 95%;
+    --secondary: 220 10% 13%;
+    --secondary-foreground: 210 20% 96%;
 
-    --muted: 240 4% 14%;
-    --muted-foreground: 240 5% 50%;
+    --muted: 220 10% 13%;
+    --muted-foreground: 220 10% 46%;
 
-    --accent: 240 4% 16%;
-    --accent-foreground: 0 0% 95%;
+    --accent: 220 10% 15%;
+    --accent-foreground: 210 20% 96%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 240 4% 16%;
-    --input: 240 4% 16%;
-    --ring: 357 92% 47%;
+    --border: 220 10% 14%;
+    --input: 220 10% 14%;
+    --ring: 0 72% 51%;
 
-    --sidebar-background: 240 6% 8%;
-    --sidebar-foreground: 0 0% 95%;
-    --sidebar-primary: 357 92% 47%;
+    --sidebar-background: 220 14% 7%;
+    --sidebar-foreground: 210 20% 96%;
+    --sidebar-primary: 0 72% 51%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 4% 14%;
-    --sidebar-accent-foreground: 0 0% 95%;
-    --sidebar-border: 240 4% 16%;
-    --sidebar-ring: 357 92% 47%;
+    --sidebar-accent: 220 10% 13%;
+    --sidebar-accent-foreground: 210 20% 96%;
+    --sidebar-border: 220 10% 14%;
+    --sidebar-ring: 0 72% 51%;
   }
 }
 
@@ -92,30 +92,42 @@
   }
 
   body {
-    @apply bg-background text-foreground font-sans antialiased;
-    font-family: 'Be Vietnam Pro', sans-serif;
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
   }
 }
 
-/* CTV Dashboard specific utilities */
+/* Premium Dashboard utilities */
 @layer utilities {
-  .ctv-card {
-    @apply rounded-2xl border border-border/40 bg-card shadow-sm;
+  .dash-card {
+    @apply rounded-xl border border-border/50 bg-card;
+    box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.12), 0 1px 2px -1px rgb(0 0 0 / 0.12);
   }
-  .ctv-card-hover {
-    @apply transition-all duration-200 hover:border-primary/20 hover:shadow-md hover:shadow-primary/5 hover:-translate-y-0.5;
+  .dash-card-hover {
+    @apply transition-all duration-200 ease-out;
   }
-  .ctv-stat-value {
-    font-size: 1.75rem;
-    line-height: 2rem;
-    font-weight: 700;
-    letter-spacing: -0.025em;
+  .dash-card-hover:hover {
+    border-color: hsl(var(--border) / 0.8);
+    box-shadow: 0 4px 12px 0 rgb(0 0 0 / 0.15), 0 2px 4px -1px rgb(0 0 0 / 0.1);
+    transform: translateY(-1px);
   }
-  .ctv-glow-btn {
+  .dash-glow-btn {
     @apply transition-all duration-200;
     box-shadow: 0 0 0 0 hsl(var(--primary) / 0);
   }
-  .ctv-glow-btn:hover:not(:disabled) {
-    box-shadow: 0 0 20px 0 hsl(var(--primary) / 0.3);
+  .dash-glow-btn:hover:not(:disabled) {
+    box-shadow: 0 0 20px 0 hsl(var(--primary) / 0.25);
   }
+  .dash-section-title {
+    @apply text-[11px] font-semibold text-muted-foreground uppercase tracking-widest;
+  }
+  .dash-stat-number {
+    @apply text-2xl font-bold tracking-tight;
+  }
+  /* Legacy aliases */
+  .ctv-card { @apply dash-card; }
+  .ctv-card-hover { @apply dash-card-hover; }
+  .ctv-glow-btn { @apply dash-glow-btn; }
+  .ctv-stat-value { @apply dash-stat-number; }
 }

@@ -5,28 +5,20 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "@/hooks/use-toast";
-import { Wallet, Clock, ArrowDownToLine, CheckCircle, XCircle, AlertTriangle, Banknote, ArrowUpRight } from "lucide-react";
+import { Wallet, Clock, ArrowDownToLine, CheckCircle, XCircle, AlertTriangle, Banknote } from "lucide-react";
 import { format } from "date-fns";
 
-const statusConfig: Record<string, { label: string; icon: typeof CheckCircle; className: string }> = {
-  pending: { label: "Chờ xử lý", icon: Clock, className: "text-yellow-400" },
-  approved: { label: "Đã duyệt", icon: CheckCircle, className: "text-green-400" },
-  paid: { label: "Đã chuyển", icon: CheckCircle, className: "text-green-400" },
-  rejected: { label: "Từ chối", icon: XCircle, className: "text-destructive" },
+const stCfg: Record<string, { label: string; icon: typeof CheckCircle; cls: string }> = {
+  pending: { label: "Chờ", icon: Clock, cls: "text-yellow-400" },
+  approved: { label: "Duyệt", icon: CheckCircle, cls: "text-emerald-400" },
+  paid: { label: "Đã TT", icon: CheckCircle, cls: "text-emerald-400" },
+  rejected: { label: "Từ chối", icon: XCircle, cls: "text-red-400" },
 };
 
-interface Props {
-  profile: {
-    user_id: string;
-    balance?: number;
-    total_withdrawn?: number;
-    [key: string]: any;
-  };
-  onSuccess: () => void;
-}
+interface Props { profile: { user_id: string; balance?: number; total_withdrawn?: number; [k: string]: any }; onSuccess: () => void; }
 
 export const CTVWithdraw = ({ profile, onSuccess }: Props) => {
-  const availableBalance = profile.balance ?? 0;
+  const bal = profile.balance ?? 0;
   const [amount, setAmount] = useState("");
   const [bankName, setBankName] = useState("");
   const [bankAccount, setBankAccount] = useState("");
@@ -35,165 +27,87 @@ export const CTVWithdraw = ({ profile, onSuccess }: Props) => {
 
   const { data: payouts, refetch } = useQuery({
     queryKey: ["ctv-payouts", profile.user_id],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("ctv_payout_requests")
-        .select("*")
-        .eq("ctv_user_id", profile.user_id)
-        .order("created_at", { ascending: false })
-        .limit(20);
-      return data ?? [];
-    },
+    queryFn: async () => { const { data } = await supabase.from("ctv_payout_requests").select("*").eq("ctv_user_id", profile.user_id).order("created_at", { ascending: false }).limit(20); return data ?? []; },
   });
 
-  const pendingAmount = useMemo(() => {
-    if (!payouts) return 0;
-    return payouts.filter(p => p.status === "pending").reduce((sum, p) => sum + p.amount, 0);
-  }, [payouts]);
+  const pending = useMemo(() => payouts?.filter(p => p.status === "pending").reduce((s, p) => s + p.amount, 0) ?? 0, [payouts]);
+  const withdrawn = useMemo(() => payouts?.filter(p => ["paid","approved"].includes(p.status)).reduce((s, p) => s + p.amount, 0) ?? profile.total_withdrawn ?? 0, [payouts, profile.total_withdrawn]);
 
-  const totalWithdrawn = useMemo(() => {
-    if (!payouts) return profile.total_withdrawn ?? 0;
-    return payouts.filter(p => p.status === "paid" || p.status === "approved").reduce((sum, p) => sum + p.amount, 0);
-  }, [payouts, profile.total_withdrawn]);
-
-  const amountNum = parseInt(amount) || 0;
-  const fee = Math.round(amountNum * 0);
-  const receive = amountNum - fee;
+  const num = parseInt(amount) || 0;
+  const receive = num;
 
   const handleSubmit = async () => {
-    if (isNaN(amountNum) || amountNum <= 0) {
-      toast({ title: "Số tiền không hợp lệ", variant: "destructive" });
-      return;
-    }
-    if (amountNum > availableBalance) {
-      toast({ title: "Số dư không đủ", variant: "destructive" });
-      return;
-    }
-    if (!bankName.trim() || !bankAccount.trim() || !bankHolder.trim()) {
-      toast({ title: "Vui lòng điền đầy đủ thông tin ngân hàng", variant: "destructive" });
-      return;
-    }
-
+    if (num <= 0) { toast({ title: "Số tiền không hợp lệ", variant: "destructive" }); return; }
+    if (num > bal) { toast({ title: "Số dư không đủ", variant: "destructive" }); return; }
+    if (!bankName.trim() || !bankAccount.trim() || !bankHolder.trim()) { toast({ title: "Điền đầy đủ thông tin", variant: "destructive" }); return; }
     setSubmitting(true);
-    const { error } = await supabase.from("ctv_payout_requests").insert({
-      ctv_user_id: profile.user_id,
-      amount: amountNum,
-      note: `${bankName.trim()} - ${bankAccount.trim()} - ${bankHolder.trim()}`,
-    });
+    const { error } = await supabase.from("ctv_payout_requests").insert({ ctv_user_id: profile.user_id, amount: num, note: `${bankName.trim()} - ${bankAccount.trim()} - ${bankHolder.trim()}` });
     setSubmitting(false);
-
-    if (error) {
-      toast({ title: "Lỗi gửi yêu cầu", description: error.message, variant: "destructive" });
-    } else {
-      toast({ title: "✅ Đã gửi yêu cầu rút tiền" });
-      setAmount("");
-      refetch();
-      onSuccess();
-    }
+    if (error) toast({ title: "Lỗi", description: error.message, variant: "destructive" });
+    else { toast({ title: "✅ Đã gửi yêu cầu rút tiền" }); setAmount(""); refetch(); onSuccess(); }
   };
 
   return (
-    <div className="space-y-4">
-      {/* 3 KPI cards */}
-      <div className="grid grid-cols-3 gap-2">
+    <div className="space-y-5">
+      <div className="grid grid-cols-3 gap-3">
         {[
-          { label: "Khả dụng", value: availableBalance, icon: Wallet, color: "text-primary", iconBg: "bg-primary/10" },
-          { label: "Đang chờ", value: pendingAmount, icon: Clock, color: "text-yellow-400", iconBg: "bg-yellow-400/10" },
-          { label: "Đã rút", value: totalWithdrawn, icon: Banknote, color: "text-green-400", iconBg: "bg-green-400/10" },
-        ].map((s, i) => {
-          const Icon = s.icon;
-          return (
-            <Card key={i} className="ctv-card ctv-card-hover group">
-              <CardContent className="p-3">
-                <div className="flex items-start justify-between mb-2">
-                  <div className={`p-2 rounded-xl ${s.iconBg} group-hover:scale-110 transition-transform`}>
-                    <Icon className={`h-4 w-4 ${s.color}`} />
-                  </div>
-                  <ArrowUpRight className="h-3 w-3 text-muted-foreground/20" />
-                </div>
-                <p className={`text-lg font-bold ${s.color}`}>{s.value.toLocaleString("vi-VN")}đ</p>
-                <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">{s.label}</p>
-              </CardContent>
-            </Card>
-          );
-        })}
+          { label: "Khả dụng", value: bal, icon: Wallet, color: "text-primary", bg: "bg-primary/10" },
+          { label: "Đang chờ", value: pending, icon: Clock, color: "text-yellow-400", bg: "bg-yellow-500/10" },
+          { label: "Đã rút", value: withdrawn, icon: Banknote, color: "text-emerald-400", bg: "bg-emerald-500/10" },
+        ].map((s, i) => { const Icon = s.icon; return (
+          <Card key={i} className="dash-card dash-card-hover">
+            <CardContent className="p-4">
+              <div className={`w-8 h-8 rounded-lg ${s.bg} flex items-center justify-center mb-3`}>
+                <Icon className={`h-4 w-4 ${s.color}`} />
+              </div>
+              <p className={`text-lg font-bold ${s.color}`}>{s.value.toLocaleString("vi-VN")}đ</p>
+              <p className="text-xs text-muted-foreground">{s.label}</p>
+            </CardContent>
+          </Card>
+        ); })}
       </div>
 
-      {/* 50/50 layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-        {/* Form */}
-        <Card className="ctv-card">
-          <CardContent className="p-4 space-y-3">
-            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-              <ArrowDownToLine className="h-3.5 w-3.5" /> Yêu cầu rút tiền
-            </h3>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <Card className="dash-card">
+          <CardContent className="p-5 space-y-4">
+            <h3 className="dash-section-title flex items-center gap-2"><ArrowDownToLine className="h-3.5 w-3.5" /> Rút tiền</h3>
             <div className="space-y-1">
               <label className="text-xs font-medium text-foreground">Số tiền (VNĐ)</label>
-              <Input type="number" placeholder="100000" value={amount} onChange={e => setAmount(e.target.value)} className="h-9 rounded-xl" />
-              {amountNum > 0 && (
-                <p className="text-[10px] text-muted-foreground">
-                  Bạn sẽ nhận: <span className="text-primary font-semibold">{receive.toLocaleString("vi-VN")}đ</span>
-                </p>
-              )}
+              <Input type="number" placeholder="100000" value={amount} onChange={e => setAmount(e.target.value)} className="h-9" />
+              {num > 0 && <p className="text-[11px] text-muted-foreground">Nhận: <span className="text-primary font-medium">{receive.toLocaleString("vi-VN")}đ</span></p>}
             </div>
             <div className="space-y-1">
               <label className="text-xs font-medium text-foreground">Ngân hàng</label>
-              <Input placeholder="VD: Vietcombank" value={bankName} onChange={e => setBankName(e.target.value)} className="h-9 rounded-xl" />
+              <Input placeholder="VD: Vietcombank" value={bankName} onChange={e => setBankName(e.target.value)} className="h-9" />
             </div>
             <div className="grid grid-cols-2 gap-2">
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-foreground">Số tài khoản</label>
-                <Input placeholder="Số TK" value={bankAccount} onChange={e => setBankAccount(e.target.value)} className="h-9 rounded-xl" />
-              </div>
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-foreground">Chủ TK</label>
-                <Input placeholder="NGUYEN VAN A" value={bankHolder} onChange={e => setBankHolder(e.target.value)} className="h-9 rounded-xl" />
-              </div>
+              <div className="space-y-1"><label className="text-xs font-medium text-foreground">Số TK</label><Input value={bankAccount} onChange={e => setBankAccount(e.target.value)} className="h-9" /></div>
+              <div className="space-y-1"><label className="text-xs font-medium text-foreground">Chủ TK</label><Input placeholder="NGUYEN VAN A" value={bankHolder} onChange={e => setBankHolder(e.target.value)} className="h-9" /></div>
             </div>
-            <Button
-              className="w-full h-9 rounded-xl ctv-glow-btn"
-              onClick={handleSubmit}
-              disabled={submitting || availableBalance <= 0 || amountNum <= 0 || amountNum > availableBalance}
-            >
-              {submitting ? "Đang gửi..." : "Gửi yêu cầu rút tiền"}
+            <Button className="w-full h-9 dash-glow-btn" onClick={handleSubmit} disabled={submitting || bal <= 0 || num <= 0 || num > bal}>
+              {submitting ? "Đang gửi..." : "Gửi yêu cầu"}
             </Button>
-            {availableBalance <= 0 && (
-              <p className="text-[10px] text-muted-foreground text-center flex items-center justify-center gap-1">
-                <AlertTriangle className="h-3 w-3" /> Không có số dư để rút
-              </p>
-            )}
+            {bal <= 0 && <p className="text-[11px] text-muted-foreground text-center flex items-center justify-center gap-1"><AlertTriangle className="h-3 w-3" /> Không có số dư</p>}
           </CardContent>
         </Card>
 
-        {/* History */}
-        <Card className="ctv-card">
-          <CardContent className="p-4">
-            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Lịch sử rút tiền</h3>
-            {(!payouts || payouts.length === 0) ? (
-              <div className="py-10 text-center space-y-2">
-                <Wallet className="h-7 w-7 mx-auto text-muted-foreground/10" />
-                <p className="text-xs text-muted-foreground">Chưa có yêu cầu nào</p>
-              </div>
+        <Card className="dash-card">
+          <CardContent className="p-5">
+            <h3 className="dash-section-title mb-4">Lịch sử</h3>
+            {!payouts?.length ? (
+              <div className="py-10 text-center"><Wallet className="h-6 w-6 mx-auto text-muted-foreground/10 mb-2" /><p className="text-xs text-muted-foreground">Chưa có yêu cầu</p></div>
             ) : (
-              <div className="divide-y divide-border/10">
-                {payouts.map((p) => {
-                  const st = statusConfig[p.status] ?? statusConfig.pending;
-                  const Icon = st.icon;
-                  return (
-                    <div key={p.id} className="flex items-center gap-2.5 py-2.5 hover:bg-accent/20 transition-colors rounded-lg px-1">
-                      <div className={`p-1.5 rounded-lg bg-accent/50 ${st.className}`}>
-                        <Icon className="h-3.5 w-3.5" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-semibold text-foreground">{p.amount.toLocaleString("vi-VN")}đ</p>
-                        <p className="text-[10px] text-muted-foreground truncate">
-                          {p.note || "—"} • {format(new Date(p.created_at), "dd/MM/yy HH:mm")}
-                        </p>
-                      </div>
-                      <span className={`text-[10px] font-semibold ${st.className}`}>{st.label}</span>
+              <div className="space-y-1">
+                {payouts.map(p => { const st = stCfg[p.status] ?? stCfg.pending; const Icon = st.icon; return (
+                  <div key={p.id} className="flex items-center gap-2.5 py-2.5 px-1 rounded-lg hover:bg-accent/30 transition-colors">
+                    <div className={`w-7 h-7 rounded-md bg-accent flex items-center justify-center ${st.cls}`}><Icon className="h-3.5 w-3.5" /></div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium text-foreground">{p.amount.toLocaleString("vi-VN")}đ</p>
+                      <p className="text-[11px] text-muted-foreground truncate">{p.note || "—"} · {format(new Date(p.created_at), "dd/MM HH:mm")}</p>
                     </div>
-                  );
-                })}
+                    <span className={`text-[10px] font-medium ${st.cls}`}>{st.label}</span>
+                  </div>
+                ); })}
               </div>
             )}
           </CardContent>
