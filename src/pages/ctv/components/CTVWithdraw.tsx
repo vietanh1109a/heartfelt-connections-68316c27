@@ -89,7 +89,7 @@ export const CTVWithdraw = ({ profile, onSuccess }: Props) => {
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Số dư khả dụng</p>
-              <p className="text-3xl font-bold text-primary">{profile.available_balance.toLocaleString("vi-VN")}đ</p>
+              <p className="text-3xl font-bold text-primary">{(profile.balance ?? 0).toLocaleString("vi-VN")}đ</p>
             </div>
           </CardContent>
         </Card>
@@ -101,7 +101,7 @@ export const CTVWithdraw = ({ profile, onSuccess }: Props) => {
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Đang chờ duyệt</p>
-              <p className="text-3xl font-bold text-yellow-400">{profile.pending_balance.toLocaleString("vi-VN")}đ</p>
+              <p className="text-3xl font-bold text-yellow-400">0đ</p>
             </div>
           </CardContent>
         </Card>
