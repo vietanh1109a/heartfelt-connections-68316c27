@@ -63,7 +63,7 @@ const PlanSelector = memo(() => {
 
   const handlePurchase = async (plan: { id: string; price: number; name: string }) => {
     if (!user || !profile) return;
-    const effectiveBalance = (profile.balance ?? 0) + (profile.bonus_balance ?? 0);
+    const effectiveBalance = (profile as any).effective_balance ?? ((profile.balance ?? 0) + (profile.bonus_balance ?? 0));
     if (effectiveBalance < plan.price) {
       toast.error(`Số dư không đủ. Cần ${plan.price.toLocaleString("vi-VN")}đ, bạn có ${effectiveBalance.toLocaleString("vi-VN")}đ.`);
       navigate("/deposit");

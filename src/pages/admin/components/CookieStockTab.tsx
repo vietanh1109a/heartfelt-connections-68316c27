@@ -306,7 +306,7 @@ export function CookieStockTab() {
   // === Clear All cookies ===
   const handleClearAll = async () => {
     // Delete related assignments first to avoid foreign key violation
-    const { error: fkError } = await supabase.from("user_cookie_assignment").delete().gte("assigned_at", "1970-01-01");
+    const { error: fkError } = await supabase.from("user_cookie_assignment").delete().gte("created_at", "1970-01-01");
     if (fkError) { toast.error("Lỗi xóa assignments: " + fkError.message); return; }
     const { error } = await supabase.from("cookie_stock").delete().gte("updated_at", "1970-01-01");
     if (error) { toast.error(error.message); return; }

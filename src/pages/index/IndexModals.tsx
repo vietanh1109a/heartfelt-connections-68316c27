@@ -146,7 +146,7 @@ export const VipPlansModal = memo(({
 
   const handlePurchase = async (plan: { id: string; name: string; price: number; duration_days: number }) => {
     if (!profile) return;
-    const effectiveBalance = (profile.balance ?? 0) + (profile.bonus_balance ?? 0);
+    const effectiveBalance = (profile as any).effective_balance ?? ((profile.balance ?? 0) + (profile.bonus_balance ?? 0));
     if (effectiveBalance < plan.price) {
       toast.error(`Số dư không đủ. Cần ${plan.price.toLocaleString("vi-VN")}đ, bạn có ${effectiveBalance.toLocaleString("vi-VN")}đ.`);
       return;
@@ -423,7 +423,7 @@ export const TvConfirmModal = memo(({
         </div>
         <div className="rounded-xl border border-border/30 bg-secondary/40 p-4 mb-6 space-y-2">
           <p className="text-sm text-muted-foreground">
-          Kích hoạt Netflix trên TV sẽ trừ <strong className="text-foreground">500đ</strong> từ tài khoản của bạn.
+          Kích hoạt Netflix trên TV sẽ trừ <strong className="text-foreground">5 lượt xem</strong> hoặc <strong className="text-foreground">2.500đ</strong> từ tài khoản của bạn.
           </p>
           <p className="text-sm text-muted-foreground">Bạn có muốn tiếp tục?</p>
         </div>
@@ -436,7 +436,7 @@ export const TvConfirmModal = memo(({
             disabled={loading}
             className="px-5 py-2.5 rounded-xl text-sm font-bold text-white bg-primary hover:bg-primary/90 transition-colors disabled:opacity-50"
           >
-            {loading ? "Đang kích hoạt..." : "Kích hoạt (-500đ)"}
+            {loading ? "Đang kích hoạt..." : "Kích hoạt (-5 lượt / 2.500đ)"}
           </button>
         </div>
       </motion.div>

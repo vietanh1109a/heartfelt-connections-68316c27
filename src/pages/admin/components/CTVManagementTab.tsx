@@ -109,7 +109,7 @@ export const CTVManagementTab = () => {
   const stats = {
     pending: ctvProfiles?.filter(c => c.status === "pending").length ?? 0,
     approved: ctvProfiles?.filter(c => c.status === "approved").length ?? 0,
-    totalOrders: 0,
+    totalOrders: ctvProfiles?.reduce((sum, c) => sum + (c.total_earned ?? 0), 0) ? ctvProfiles?.length ?? 0 : 0,
     totalCommission: ctvProfiles?.reduce((sum, c) => sum + (c.balance ?? 0), 0) ?? 0,
   };
 
@@ -441,9 +441,9 @@ export const CTVManagementTab = () => {
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div><span className="text-muted-foreground">User ID:</span> <span className="text-foreground font-mono text-xs">{selectedCTV.user_id}</span></div>
                 <div><span className="text-muted-foreground">Trạng thái:</span> <Badge variant={statusConfig[selectedCTV.status]?.variant ?? "outline"} className="ml-1 text-xs">{statusConfig[selectedCTV.status]?.label ?? selectedCTV.status}</Badge></div>
-                <div><span className="text-muted-foreground">Liên hệ:</span> <span className="text-foreground">{selectedCTV.contact_info || "—"}</span></div>
+                <div><span className="text-muted-foreground">Liên hệ:</span> <span className="text-foreground">{selectedCTV.phone || selectedCTV.zalo || selectedCTV.fb_link || "—"}</span></div>
                 <div><span className="text-muted-foreground">Hoa hồng:</span> <span className="text-foreground font-semibold">{selectedCTV.commission_rate}%</span></div>
-                <div><span className="text-muted-foreground">Ngân hàng:</span> <span className="text-foreground">{selectedCTV.bank_name ? `${selectedCTV.bank_name} - ${selectedCTV.bank_account} - ${selectedCTV.bank_holder}` : "Chưa cập nhật"}</span></div>
+                <div><span className="text-muted-foreground">Ngân hàng:</span> <span className="text-foreground">{selectedCTV.note || "Chưa cập nhật"}</span></div>
                 <div><span className="text-muted-foreground">Ngày ĐK:</span> <span className="text-foreground">{format(new Date(selectedCTV.created_at), "dd/MM/yyyy HH:mm")}</span></div>
                 {(() => {
                   const reg = getRegistration(selectedCTV.user_id);
@@ -461,26 +461,26 @@ export const CTVManagementTab = () => {
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   <Card className="border-border/50">
                     <CardContent className="p-3 text-center">
-                      <p className="text-xl font-bold text-foreground">{selectedCTV.total_orders}</p>
+                      <p className="text-xl font-bold text-foreground">{ctvOrders?.length ?? 0}</p>
                       <p className="text-xs text-muted-foreground">Tổng đơn</p>
                     </CardContent>
                   </Card>
                   <Card className="border-border/50">
                     <CardContent className="p-3 text-center">
-                      <p className="text-xl font-bold text-foreground">{formatCurrency(selectedCTV.total_sales)}</p>
+                      <p className="text-xl font-bold text-foreground">{formatCurrency(selectedCTV.total_earned ?? 0)}</p>
                       <p className="text-xs text-muted-foreground">Doanh thu</p>
                     </CardContent>
                   </Card>
                   <Card className="border-border/50">
                     <CardContent className="p-3 text-center">
-                      <p className="text-xl font-bold text-foreground">{formatCurrency(selectedCTV.available_balance)}</p>
+                      <p className="text-xl font-bold text-foreground">{formatCurrency(selectedCTV.balance ?? 0)}</p>
                       <p className="text-xs text-muted-foreground">Khả dụng</p>
                     </CardContent>
                   </Card>
                   <Card className="border-border/50">
                     <CardContent className="p-3 text-center">
-                      <p className="text-xl font-bold text-foreground">{formatCurrency(selectedCTV.pending_balance)}</p>
-                      <p className="text-xs text-muted-foreground">Chờ duyệt</p>
+                      <p className="text-xl font-bold text-foreground">{formatCurrency(selectedCTV.total_withdrawn ?? 0)}</p>
+                      <p className="text-xs text-muted-foreground">Đã rút</p>
                     </CardContent>
                   </Card>
                 </div>

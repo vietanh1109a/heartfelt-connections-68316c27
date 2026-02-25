@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
@@ -37,11 +37,27 @@ const Auth = () => {
   const { signIn } = useAuth();
   const navigate = useNavigate();
 
+  // Resume OTP cooldown timer after page reload
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const interval = setInterval(() => {
+      setResendCooldown((prev) => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          localStorage.removeItem("otp_cooldown_until");
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Normalize email: if user types just "admin1", convert to "admin1@admin.com"
   const getNormalizedEmail = (input: string) => {
     const trimmed = input.trim().toLowerCase();
     if (!trimmed.includes("@")) return `${trimmed}@admin.com`;
-    return input;
+    return trimmed;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -177,14 +193,14 @@ const Auth = () => {
     setLoading(true);
 
     const { data, error } = await supabase.functions.invoke("verify-otp", {
-      body: { email, code: otpCode, referralCode: referralCode.trim() || undefined },
+      body: { email: getNormalizedEmail(email), code: otpCode, referralCode: referralCode.trim() || undefined },
     });
 
     if (error || !data?.success) {
       toast.error(data?.error || "Mã xác thực không đúng. Vui lòng thử lại.");
     } else {
       // After OTP confirms email, sign in to establish session
-      const { error: signInError } = await signIn(email, password);
+      const { error: signInError } = await signIn(getNormalizedEmail(email), password);
       if (signInError) {
         console.error("Auto sign-in after OTP failed:", signInError);
       }
@@ -200,7 +216,7 @@ const Auth = () => {
 
   const handleResendOtp = async () => {
     if (resendCooldown > 0) return;
-    await sendOtp(email);
+    await sendOtp(getNormalizedEmail(email));
     toast.success("Đã gửi lại mã xác thực!");
   };
 
@@ -459,4 +475,3 @@ const Auth = () => {
 };
 
 export default Auth;
-

@@ -74,7 +74,7 @@ const Index = () => {
     const freeViews = (profile as any).free_views_left ?? 0;
     const vipViews = (profile as any).vip_views_left ?? 0;
     const hasViews = freeViews > 0 || vipViews > 0;
-    const effectiveBalance = (profile?.balance ?? 0) + (profile?.bonus_balance ?? 0);
+    const effectiveBalance = (profile as any)?.effective_balance ?? ((profile?.balance ?? 0) + (profile?.bonus_balance ?? 0));
 
     if (!hasViews && effectiveBalance < 500) {
       toast.error("Hết lượt xem và số dư không đủ. Cần ít nhất 500đ hoặc mua thêm lượt xem.");
@@ -175,7 +175,7 @@ const Index = () => {
     const freeViews = (profile as any)?.free_views_left ?? 0;
     const vipViews = (profile as any)?.vip_views_left ?? 0;
     const hasEnoughViews = freeViews >= 5 || vipViews >= 5;
-    const effectiveBalance = (profile?.balance ?? 0) + (profile?.bonus_balance ?? 0);
+    const effectiveBalance = (profile as any)?.effective_balance ?? ((profile?.balance ?? 0) + (profile?.bonus_balance ?? 0));
 
     if (!hasEnoughViews && effectiveBalance < 2500) {
       toast.error("Không đủ lượt xem (cần 5 lượt) hoặc số dư (cần 2.500đ) để kích hoạt TV.");

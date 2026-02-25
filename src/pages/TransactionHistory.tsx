@@ -61,6 +61,7 @@ const TransactionHistory = () => {
       const { data, error } = await supabase
         .from("product_purchases")
         .select("id, amount_paid, created_at, product_id, product_item_id")
+        .eq("user_id", user.id)
         .order("created_at", { ascending: false });
       if (error) throw error;
 
