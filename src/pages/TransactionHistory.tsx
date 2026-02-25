@@ -90,7 +90,7 @@ const TransactionHistory = () => {
 
   // Map transaction memo to purchase info
   const getPurchaseForTx = (tx: any) => {
-    if (!tx.memo?.startsWith("Mua gói")) return null;
+    if (!tx.description?.startsWith("Mua gói")) return null;
     return purchases?.find(
       (p: any) => Math.abs(new Date(p.created_at).getTime() - new Date(tx.created_at).getTime()) < 60000
     );
@@ -194,7 +194,7 @@ const TransactionHistory = () => {
                               {tx.type === "deposit" ? "Nạp tiền" : "Sử dụng"}
                             </p>
                             <p className="text-muted-foreground text-xs">
-                              {tx.memo || (tx.type === "deposit" ? "Nạp tiền" : "Xem phim")}
+                              {tx.description || (tx.type === "deposit" ? "Nạp tiền" : "Xem phim")}
                             </p>
                             <p className="text-muted-foreground/60 text-xs mt-0.5">
                               {format(new Date(tx.created_at), "HH:mm - dd/MM/yyyy", { locale: vi })}

@@ -175,7 +175,7 @@ export const CTVWithdraw = ({ profile, onSuccess }: Props) => {
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-semibold text-foreground">{p.amount.toLocaleString("vi-VN")}đ</p>
                           <p className="text-xs text-muted-foreground">
-                            {p.bank_name} • {p.bank_account} • {format(new Date(p.created_at), "dd/MM/yy HH:mm")}
+                            {p.note || "—"} • {format(new Date(p.created_at), "dd/MM/yy HH:mm")}
                           </p>
                         </div>
                         <span className={`text-xs font-semibold ${st.className}`}>{st.label}</span>

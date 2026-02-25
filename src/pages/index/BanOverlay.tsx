@@ -52,7 +52,7 @@ const BanOverlay = memo(({ ban, onSignOut }: Props) => {
             <div className="flex gap-6">
               <div>
                 <p className="text-xs text-muted-foreground mb-1">Thời gian khóa:</p>
-                <p className="text-sm font-semibold text-foreground">{new Date(ban.banned_at).toLocaleString("vi-VN")}</p>
+                <p className="text-sm font-semibold text-foreground">{new Date(ban.created_at).toLocaleString("vi-VN")}</p>
               </div>
               <div>
                 <p className="text-xs text-muted-foreground mb-1">Hết hạn lúc:</p>
