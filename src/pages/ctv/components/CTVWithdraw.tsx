@@ -18,20 +18,18 @@ const statusConfig: Record<string, { label: string; icon: typeof CheckCircle; cl
 interface Props {
   profile: {
     user_id: string;
-    available_balance: number;
-    pending_balance: number;
-    bank_name: string | null;
-    bank_account: string | null;
-    bank_holder: string | null;
+    balance?: number;
+    [key: string]: any;
   };
   onSuccess: () => void;
 }
 
 export const CTVWithdraw = ({ profile, onSuccess }: Props) => {
+  const availableBalance = profile.balance ?? 0;
   const [amount, setAmount] = useState("");
-  const [bankName, setBankName] = useState(profile.bank_name ?? "");
-  const [bankAccount, setBankAccount] = useState(profile.bank_account ?? "");
-  const [bankHolder, setBankHolder] = useState(profile.bank_holder ?? "");
+  const [bankName, setBankName] = useState("");
+  const [bankAccount, setBankAccount] = useState("");
+  const [bankHolder, setBankHolder] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   const { data: payouts, refetch } = useQuery({
@@ -53,7 +51,7 @@ export const CTVWithdraw = ({ profile, onSuccess }: Props) => {
       toast({ title: "Số tiền không hợp lệ", variant: "destructive" });
       return;
     }
-    if (amountNum > profile.available_balance) {
+    if (amountNum > availableBalance) {
       toast({ title: "Số dư không đủ", variant: "destructive" });
       return;
     }
@@ -66,9 +64,7 @@ export const CTVWithdraw = ({ profile, onSuccess }: Props) => {
     const { error } = await supabase.from("ctv_payout_requests").insert({
       ctv_user_id: profile.user_id,
       amount: amountNum,
-      bank_name: bankName.trim(),
-      bank_account: bankAccount.trim(),
-      bank_holder: bankHolder.trim(),
+      note: `${bankName.trim()} - ${bankAccount.trim()} - ${bankHolder.trim()}`,
     });
     setSubmitting(false);
 
@@ -138,10 +134,10 @@ export const CTVWithdraw = ({ profile, onSuccess }: Props) => {
                 <label className="text-sm font-medium text-foreground">Tên chủ TK</label>
                 <Input placeholder="NGUYEN VAN A" value={bankHolder} onChange={e => setBankHolder(e.target.value)} />
               </div>
-              <Button className="w-full" onClick={handleSubmit} disabled={submitting || profile.available_balance <= 0}>
+              <Button className="w-full" onClick={handleSubmit} disabled={submitting || availableBalance <= 0}>
                 {submitting ? "Đang gửi..." : "Gửi yêu cầu"}
               </Button>
-              {profile.available_balance <= 0 && (
+              {availableBalance <= 0 && (
                 <p className="text-xs text-muted-foreground text-center flex items-center justify-center gap-1">
                   <AlertTriangle className="h-3 w-3" /> Không có số dư để rút
                 </p>
