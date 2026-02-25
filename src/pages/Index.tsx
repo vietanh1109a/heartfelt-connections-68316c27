@@ -4,10 +4,8 @@ import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
-import { CheckCircle2, Crown, Menu, Sun, Moon } from "lucide-react";
-import { useTheme } from "@/lib/theme";
+import { CheckCircle2, Crown, Menu } from "lucide-react";
 import { useLanguage } from "@/lib/language";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import Products from "./Products";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -29,7 +27,6 @@ function TopBar({ sidebarCollapsed, onToggleSidebar, isVip, profile, userEmail }
   sidebarCollapsed: boolean; onToggleSidebar: () => void;
   isVip: boolean; profile: any; userEmail?: string;
 }) {
-  const { theme, toggleTheme } = useTheme();
   const { lang, setLang, t } = useLanguage();
 
   return (
@@ -44,36 +41,14 @@ function TopBar({ sidebarCollapsed, onToggleSidebar, isVip, profile, userEmail }
           </span>
         )}
 
-        {/* Glass pill control group */}
-        <div className="flex items-center gap-0 rounded-full border border-border/30 bg-card/60 backdrop-blur-md p-1 shadow-sm">
-          {/* Theme toggle – animated switch */}
-          <button
-            onClick={toggleTheme}
-            className="relative flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-200 hover:bg-accent/60"
-            aria-label={theme === "dark" ? "Switch to light" : "Switch to dark"}
-          >
-            <span className={`transition-all duration-300 ${theme === "dark" ? "rotate-0 scale-100" : "-rotate-90 scale-0 w-0 overflow-hidden"}`}>
-              <Moon className="h-3.5 w-3.5 text-blue-300" />
-            </span>
-            <span className={`transition-all duration-300 ${theme === "light" ? "rotate-0 scale-100" : "rotate-90 scale-0 w-0 overflow-hidden"}`}>
-              <Sun className="h-3.5 w-3.5 text-amber-500" />
-            </span>
-            <span className="text-foreground/80">{theme === "dark" ? "Dark" : "Light"}</span>
-          </button>
-
-          {/* Divider */}
-          <div className="w-px h-4 bg-border/40" />
-
-          {/* Language toggle */}
-          <button
-            onClick={() => setLang(lang === "vi" ? "en" : "vi")}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-200 hover:bg-accent/60"
-            aria-label={lang === "vi" ? "Switch to English" : "Chuyển sang Tiếng Việt"}
-          >
-            <span className="text-sm leading-none">{lang === "vi" ? "🇻🇳" : "🇬🇧"}</span>
-            <span className="text-foreground/80">{lang === "vi" ? "VI" : "EN"}</span>
-          </button>
-        </div>
+        {/* Language toggle pill */}
+        <button
+          onClick={() => setLang(lang === "vi" ? "en" : "vi")}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-border/30 bg-card/60 backdrop-blur-md text-xs font-medium transition-all duration-200 hover:bg-accent/60 shadow-sm"
+        >
+          <span className="text-sm leading-none">{lang === "vi" ? "🇻🇳" : "🇬🇧"}</span>
+          <span className="text-foreground/80">{lang === "vi" ? "VI" : "EN"}</span>
+        </button>
 
         <div className="text-right hidden sm:block">
           <p className="text-sm font-medium text-foreground">{profile?.display_name || "User"}</p>
