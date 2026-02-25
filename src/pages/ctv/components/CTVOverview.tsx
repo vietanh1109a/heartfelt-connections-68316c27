@@ -1,11 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import { format, subDays } from "date-fns";
 import {
   DollarSign, Wallet, Package, TrendingUp,
-  Lightbulb, Bell, CheckCircle, AlertTriangle, Clock, Star,
+  Lightbulb, Bell, CheckCircle, AlertTriangle, Star, Rocket,
 } from "lucide-react";
 
 interface Props {
@@ -79,7 +80,6 @@ export const CTVOverview = ({ profile }: Props) => {
     },
   });
 
-  // Top products
   const { data: topProducts } = useQuery({
     queryKey: ["ctv-top-products", profile.user_id],
     queryFn: async () => {
@@ -108,83 +108,85 @@ export const CTVOverview = ({ profile }: Props) => {
   });
 
   const mainStats = [
-    { label: "Doanh thu", value: `${totalSales.toLocaleString("vi-VN")}đ`, icon: DollarSign, color: "text-primary", bg: "bg-primary/10" },
-    { label: "Khả dụng", value: `${availableBalance.toLocaleString("vi-VN")}đ`, icon: Wallet, color: "text-green-400", bg: "bg-green-400/10" },
-    { label: "Đang bán", value: `${listingStats?.active ?? 0}`, icon: Package, color: "text-blue-400", bg: "bg-blue-400/10" },
-    { label: "Tỉ lệ TC", value: `${successRate}%`, icon: TrendingUp, color: parseFloat(successRate) >= 90 ? "text-green-400" : "text-primary", bg: parseFloat(successRate) >= 90 ? "bg-green-400/10" : "bg-primary/10" },
+    { label: "Doanh thu", value: `${totalSales.toLocaleString("vi-VN")}đ`, icon: DollarSign, color: "text-primary" },
+    { label: "Khả dụng", value: `${availableBalance.toLocaleString("vi-VN")}đ`, icon: Wallet, color: "text-green-400" },
+    { label: "Đang bán", value: `${listingStats?.active ?? 0}`, icon: Package, color: "text-blue-400" },
+    { label: "Tỉ lệ TC", value: `${successRate}%`, icon: TrendingUp, color: parseFloat(successRate) >= 90 ? "text-green-400" : "text-primary" },
   ];
 
   const activityIcon = (status: string) => {
-    if (status === "refunded") return <AlertTriangle className="h-3.5 w-3.5 text-orange-400" />;
-    return <CheckCircle className="h-3.5 w-3.5 text-green-400" />;
+    if (status === "refunded") return <AlertTriangle className="h-3 w-3 text-orange-400" />;
+    return <CheckCircle className="h-3 w-3 text-green-400" />;
   };
 
   return (
     <div className="space-y-5">
-      {/* 4 Main KPIs */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      {/* 4 KPI Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {mainStats.map((s, i) => {
           const Icon = s.icon;
           return (
-            <Card key={i} className="border-border/50">
+            <Card key={i} className="ctv-card ctv-card-hover">
               <CardContent className="p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs text-muted-foreground">{s.label}</span>
-                  <div className={`p-1.5 rounded-lg ${s.bg}`}>
-                    <Icon className={`h-3.5 w-3.5 ${s.color}`} />
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-xl bg-accent">
+                    <Icon className={`h-4 w-4 ${s.color}`} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">{s.label}</p>
+                    <p className={`ctv-stat-value ${s.color}`}>{s.value}</p>
                   </div>
                 </div>
-                <p className={`text-xl font-bold ${s.color}`}>{s.value}</p>
               </CardContent>
             </Card>
           );
         })}
       </div>
 
-      {/* Chart (70%) + Sidebar (30%) */}
+      {/* Chart 70% + Sidebar 30% */}
       <div className="grid grid-cols-1 lg:grid-cols-10 gap-4">
-        {/* Charts - Left 70% */}
         <div className="lg:col-span-7 space-y-4">
-          <Card className="border-border/50">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                <TrendingUp className="h-4 w-4" /> Doanh thu 7 ngày
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="h-[260px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={chartData ?? []}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis dataKey="date" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
-                  <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
-                  <Tooltip
-                    contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }}
-                    formatter={(v: number) => [`${v.toLocaleString("vi-VN")}đ`, "Doanh thu"]}
-                  />
-                  <Bar dataKey="revenue" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
+          <Card className="ctv-card">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                  <TrendingUp className="h-3.5 w-3.5" /> Doanh thu 7 ngày
+                </h3>
+              </div>
+              <div className="h-[240px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={chartData ?? []}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.5} />
+                    <XAxis dataKey="date" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
+                    <Tooltip
+                      contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 12, fontSize: 12, boxShadow: "0 8px 30px rgba(0,0,0,0.3)" }}
+                      formatter={(v: number) => [`${v.toLocaleString("vi-VN")}đ`, "Doanh thu"]}
+                      cursor={{ fill: "hsl(var(--accent))", opacity: 0.5 }}
+                    />
+                    <Bar dataKey="revenue" fill="hsl(var(--primary))" radius={[6, 6, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
             </CardContent>
           </Card>
 
           {/* Top products */}
           {topProducts && topProducts.length > 0 && (
-            <Card className="border-border/50">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                  <Star className="h-4 w-4" /> Top sản phẩm
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-0">
-                <div className="divide-y divide-border/20">
+            <Card className="ctv-card">
+              <CardContent className="p-4">
+                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2 mb-3">
+                  <Star className="h-3.5 w-3.5" /> Top sản phẩm
+                </h3>
+                <div className="divide-y divide-border/30">
                   {topProducts.map((p, i) => (
                     <div key={p.id} className="flex items-center gap-3 py-2.5">
-                      <span className="text-xs font-bold text-muted-foreground w-5">#{i + 1}</span>
+                      <span className="text-[10px] font-bold text-muted-foreground w-5">#{i + 1}</span>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-foreground truncate">{p.title}</p>
                         <p className="text-[10px] text-muted-foreground">{p.price.toLocaleString("vi-VN")}đ</p>
                       </div>
-                      <span className="text-xs font-semibold text-primary">{p.total_sold} đã bán</span>
+                      <span className="text-xs font-semibold text-primary">{p.total_sold} bán</span>
                     </div>
                   ))}
                 </div>
@@ -193,43 +195,35 @@ export const CTVOverview = ({ profile }: Props) => {
           )}
         </div>
 
-        {/* Sidebar - Right 30% */}
-        <div className="lg:col-span-3 space-y-4">
-          {/* Wallet summary */}
-          <Card className="border-border/50">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                <Wallet className="h-4 w-4" /> Ví CTV
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Chờ duyệt</span>
-                <span className="text-yellow-400 font-semibold">{(listingStats?.pending ?? 0)} SP</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Đơn hoàn</span>
-                <span className="text-orange-400 font-semibold">{orderStats?.refunded ?? 0}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Tổng đơn</span>
-                <span className="text-foreground font-semibold">{orderStats?.total ?? 0}</span>
-              </div>
+        {/* Sidebar 30% */}
+        <div className="lg:col-span-3 space-y-3">
+          <Card className="ctv-card">
+            <CardContent className="p-4 space-y-3">
+              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                <Wallet className="h-3.5 w-3.5" /> Ví CTV
+              </h3>
+              {[
+                { label: "Chờ duyệt", value: `${listingStats?.pending ?? 0} SP`, color: "text-yellow-400" },
+                { label: "Đơn hoàn", value: `${orderStats?.refunded ?? 0}`, color: "text-orange-400" },
+                { label: "Tổng đơn", value: `${orderStats?.total ?? 0}`, color: "text-foreground" },
+              ].map((item, i) => (
+                <div key={i} className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">{item.label}</span>
+                  <span className={`font-semibold ${item.color}`}>{item.value}</span>
+                </div>
+              ))}
             </CardContent>
           </Card>
 
-          {/* Fee Policy */}
-          <Card className="border-border/50">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Phí nền tảng</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-0">
+          <Card className="ctv-card">
+            <CardContent className="p-4 space-y-2">
+              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Phí nền tảng</h3>
               {[
-                { range: "< 100k", fee: "10%" },
-                { range: "100k–300k", fee: "7%" },
-                { range: "> 300k", fee: "5%" },
+                { range: "< 100k", fee: "10%", active: false },
+                { range: "100k–300k", fee: "7%", active: false },
+                { range: "> 300k", fee: "5%", active: false },
               ].map((r, i) => (
-                <div key={i} className="flex justify-between py-2 border-b border-border/20 last:border-0 text-sm">
+                <div key={i} className="flex justify-between py-1.5 text-sm">
                   <span className="text-muted-foreground">{r.range}</span>
                   <span className="text-primary font-semibold">{r.fee}</span>
                 </div>
@@ -237,23 +231,20 @@ export const CTVOverview = ({ profile }: Props) => {
             </CardContent>
           </Card>
 
-          {/* Tips - neutral bg instead of red */}
-          <Card className="border-border/50 bg-secondary/50">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-foreground flex items-center gap-2">
-                <Lightbulb className="h-4 w-4 text-yellow-400" /> Tips tăng doanh số
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
+          <Card className="ctv-card bg-accent/30">
+            <CardContent className="p-4">
+              <h3 className="text-xs font-semibold text-foreground flex items-center gap-1.5 mb-2">
+                <Lightbulb className="h-3.5 w-3.5 text-yellow-400" /> Tips
+              </h3>
               <ul className="space-y-1.5">
                 {[
                   "Giá cạnh tranh so với thị trường",
                   "Mô tả rõ ràng, ảnh minh họa đẹp",
                   "Bảo hành dài → bán nhanh hơn",
-                  "Giảm tỉ lệ hoàn < 5% để giữ uy tín",
+                  "Giảm tỉ lệ hoàn < 5%",
                 ].map((t, i) => (
-                  <li key={i} className="text-xs text-muted-foreground flex items-start gap-1.5">
-                    <span className="text-yellow-400 mt-0.5">•</span>{t}
+                  <li key={i} className="text-[11px] text-muted-foreground flex items-start gap-1.5">
+                    <span className="text-yellow-400 mt-0.5 text-[8px]">●</span>{t}
                   </li>
                 ))}
               </ul>
@@ -262,21 +253,30 @@ export const CTVOverview = ({ profile }: Props) => {
         </div>
       </div>
 
-      {/* Recent activity - full width */}
-      <Card className="border-border/50">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-            <Bell className="h-4 w-4" /> Hoạt động gần đây
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
+      {/* Recent activity */}
+      <Card className="ctv-card">
+        <CardContent className="p-4">
+          <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2 mb-3">
+            <Bell className="h-3.5 w-3.5" /> Hoạt động gần đây
+          </h3>
           {(!recentOrders || recentOrders.length === 0) ? (
-            <p className="text-sm text-muted-foreground py-6 text-center">Chưa có hoạt động</p>
+            <div className="py-10 flex flex-col items-center gap-3 text-center">
+              <div className="p-3 rounded-2xl bg-primary/10">
+                <Rocket className="h-8 w-8 text-primary" />
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-foreground">Chưa có hoạt động</p>
+                <p className="text-xs text-muted-foreground">Tạo sản phẩm đầu tiên để bắt đầu kiếm tiền!</p>
+              </div>
+              <Button size="sm" className="ctv-glow-btn mt-1">
+                <Package className="h-3.5 w-3.5 mr-1.5" /> Tạo sản phẩm
+              </Button>
+            </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-border/30 text-xs text-muted-foreground uppercase">
+                  <tr className="border-b border-border/30 text-[10px] text-muted-foreground uppercase tracking-wider">
                     <th className="text-left py-2 font-medium">Sản phẩm</th>
                     <th className="text-right py-2 font-medium">Giá</th>
                     <th className="text-right py-2 font-medium">Hoa hồng</th>
@@ -286,7 +286,7 @@ export const CTVOverview = ({ profile }: Props) => {
                 </thead>
                 <tbody className="divide-y divide-border/20">
                   {recentOrders.map((o: any) => (
-                    <tr key={o.id} className="hover:bg-secondary/30 transition-colors">
+                    <tr key={o.id} className="hover:bg-accent/30 transition-colors">
                       <td className="py-2.5 text-foreground text-xs font-medium truncate max-w-[160px]">
                         {o.ctv_listings?.title ?? "Sản phẩm"}
                       </td>

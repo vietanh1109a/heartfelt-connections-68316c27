@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { PlusCircle, Package, Search, Eye, Edit, ImageIcon, Rocket, ArrowRight } from "lucide-react";
+import { PlusCircle, Package, Search, Eye, Edit, ImageIcon, Rocket, ArrowRight, BookOpen } from "lucide-react";
 
 const statusConfig: Record<string, { label: string; className: string }> = {
   pending_review: { label: "Chờ duyệt", className: "bg-yellow-500/10 text-yellow-400 border-yellow-500/20" },
@@ -65,13 +65,13 @@ export const CTVListings = ({ userId, onAddNew }: Props) => {
 
   return (
     <div className="space-y-4">
-      {/* Compact Mini Stats */}
+      {/* Mini Stats */}
       <div className="grid grid-cols-4 gap-2">
         {miniStats.map((s, i) => (
-          <Card key={i} className="border-border/50">
-            <CardContent className="p-2.5 text-center">
-              <p className="text-[10px] text-muted-foreground uppercase tracking-wide">{s.label}</p>
-              <p className={`text-lg font-bold ${s.color}`}>{s.value}</p>
+          <Card key={i} className="ctv-card">
+            <CardContent className="p-3 text-center">
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">{s.label}</p>
+              <p className={`text-xl font-bold ${s.color}`}>{s.value}</p>
             </CardContent>
           </Card>
         ))}
@@ -81,11 +81,11 @@ export const CTVListings = ({ userId, onAddNew }: Props) => {
       <div className="flex flex-col sm:flex-row gap-2 items-start sm:items-center justify-between">
         <div className="flex gap-2 flex-1 w-full sm:w-auto">
           <div className="relative flex-1 sm:max-w-[220px]">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input placeholder="Tìm sản phẩm..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9 h-9" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <Input placeholder="Tìm sản phẩm..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9 h-9 rounded-xl" />
           </div>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[130px] h-9">
+            <SelectTrigger className="w-[120px] h-9 rounded-xl">
               <SelectValue placeholder="Trạng thái" />
             </SelectTrigger>
             <SelectContent>
@@ -97,21 +97,21 @@ export const CTVListings = ({ userId, onAddNew }: Props) => {
             </SelectContent>
           </Select>
         </div>
-        <Button size="sm" onClick={onAddNew} className="h-9">
-          <PlusCircle className="h-4 w-4 mr-1" /> Thêm SP
+        <Button size="sm" onClick={onAddNew} className="h-9 rounded-xl ctv-glow-btn">
+          <PlusCircle className="h-3.5 w-3.5 mr-1.5" /> Thêm SP
         </Button>
       </div>
 
       {/* Content */}
       {isLoading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {[1,2,3].map(i => (
-            <Card key={i} className="border-border/50 animate-pulse">
+            <Card key={i} className="ctv-card animate-pulse">
               <CardContent className="p-0">
-                <div className="aspect-video bg-secondary/50" />
+                <div className="aspect-video bg-accent/50 rounded-t-2xl" />
                 <div className="p-4 space-y-2">
-                  <div className="h-4 bg-secondary rounded w-3/4" />
-                  <div className="h-3 bg-secondary rounded w-1/2" />
+                  <div className="h-4 bg-accent rounded w-3/4" />
+                  <div className="h-3 bg-accent rounded w-1/2" />
                 </div>
               </CardContent>
             </Card>
@@ -119,55 +119,57 @@ export const CTVListings = ({ userId, onAddNew }: Props) => {
         </div>
       ) : !filtered.length ? (
         /* Enhanced empty state */
-        <Card className="border-border/50 border-dashed">
-          <CardContent className="py-12 text-center space-y-6">
-            <div className="w-20 h-20 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto">
-              <Rocket className="h-10 w-10 text-primary" />
+        <Card className="ctv-card border-dashed">
+          <CardContent className="py-14 text-center space-y-5">
+            <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto">
+              <Rocket className="h-8 w-8 text-primary" />
             </div>
             <div className="space-y-2">
               <h3 className="text-lg font-bold text-foreground">Bạn chưa có sản phẩm nào</h3>
-              <p className="text-sm text-muted-foreground max-w-md mx-auto">
-                "Sản phẩm đầu tiên quyết định 80% doanh thu của bạn" — Hãy bắt đầu ngay!
+              <p className="text-sm text-muted-foreground max-w-sm mx-auto">
+                "Sản phẩm đầu tiên quyết định 80% doanh thu của bạn"
               </p>
             </div>
 
-            {/* Steps guide */}
-            <div className="flex items-center justify-center gap-2 flex-wrap">
+            <div className="flex items-center justify-center gap-1.5 flex-wrap">
               {[
                 { step: "1", text: "Tạo sản phẩm" },
                 { step: "2", text: "Admin duyệt" },
-                { step: "3", text: "Bắt đầu kiếm tiền" },
+                { step: "3", text: "Kiếm tiền" },
               ].map((s, i) => (
-                <div key={i} className="flex items-center gap-2">
-                  {i > 0 && <ArrowRight className="h-3.5 w-3.5 text-muted-foreground/50" />}
-                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-secondary/80 text-xs">
-                    <span className="w-5 h-5 rounded-full bg-primary/20 text-primary font-bold flex items-center justify-center text-[10px]">{s.step}</span>
+                <div key={i} className="flex items-center gap-1.5">
+                  {i > 0 && <ArrowRight className="h-3 w-3 text-muted-foreground/30" />}
+                  <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-accent text-[11px]">
+                    <span className="w-4 h-4 rounded-full bg-primary/20 text-primary font-bold flex items-center justify-center text-[9px]">{s.step}</span>
                     <span className="text-muted-foreground font-medium">{s.text}</span>
                   </div>
                 </div>
               ))}
             </div>
 
-            <Button onClick={onAddNew} size="lg" className="mt-2">
-              <PlusCircle className="h-4 w-4 mr-2" /> Tạo sản phẩm ngay
-            </Button>
+            <div className="flex items-center justify-center gap-2">
+              <Button onClick={onAddNew} className="ctv-glow-btn rounded-xl">
+                <PlusCircle className="h-4 w-4 mr-1.5" /> Tạo sản phẩm ngay
+              </Button>
+              <Button variant="outline" size="sm" className="rounded-xl">
+                <BookOpen className="h-3.5 w-3.5 mr-1" /> Hướng dẫn
+              </Button>
+            </div>
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {filtered.map((l) => {
             const st = statusConfig[l.status] ?? { label: l.status, className: "bg-secondary text-muted-foreground" };
-            const feeRate = l.price < 100000 ? 0.10 : l.price <= 300000 ? 0.07 : 0.05;
-            const earned = l.total_sold * Math.round(l.price * (1 - feeRate));
             return (
-              <Card key={l.id} className="border-border/50 overflow-hidden group hover:border-primary/30 transition-colors">
+              <Card key={l.id} className="ctv-card ctv-card-hover overflow-hidden group">
                 <CardContent className="p-0">
-                  <div className="aspect-video bg-secondary/30 relative overflow-hidden">
+                  <div className="aspect-video bg-accent/30 relative overflow-hidden rounded-t-2xl">
                     {l.thumbnail_url ? (
-                      <img src={l.thumbnail_url} alt={l.title} className="w-full h-full object-cover" />
+                      <img src={l.thumbnail_url} alt={l.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center">
-                        <ImageIcon className="h-8 w-8 text-muted-foreground/20" />
+                        <ImageIcon className="h-8 w-8 text-muted-foreground/15" />
                       </div>
                     )}
                     <div className="absolute top-2 right-2">
@@ -179,21 +181,23 @@ export const CTVListings = ({ userId, onAddNew }: Props) => {
                   <div className="p-3 space-y-2">
                     <div>
                       <h3 className="font-semibold text-foreground text-sm truncate">{l.title}</h3>
-                      <p className="text-[10px] text-muted-foreground mt-0.5">{l.category === "account" ? "Tài khoản" : l.category === "key" ? "Key" : l.category === "service" ? "Dịch vụ" : "Khác"}</p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">
+                        {l.category === "account" ? "Tài khoản" : l.category === "key" ? "Key" : l.category === "service" ? "Dịch vụ" : "Khác"}
+                      </p>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-primary font-bold text-sm">{l.price.toLocaleString("vi-VN")}đ</span>
                       <span className="text-[10px] text-muted-foreground">Bán: {l.total_sold}</span>
                     </div>
-                    {l.refund_count > 0 && (
-                      <span className="text-[10px] text-orange-400">Hoàn: {l.refund_count}</span>
-                    )}
-                    <div className="flex gap-2">
-                      <Button variant="outline" size="sm" className="flex-1 h-7 text-xs">
-                        <Eye className="h-3 w-3 mr-1" /> Chi tiết
+                    <div className="flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Button variant="outline" size="sm" className="flex-1 h-7 text-[10px] rounded-lg">
+                        <Eye className="h-3 w-3 mr-1" /> Xem
                       </Button>
-                      <Button variant="outline" size="sm" className="flex-1 h-7 text-xs">
+                      <Button variant="outline" size="sm" className="flex-1 h-7 text-[10px] rounded-lg">
                         <Edit className="h-3 w-3 mr-1" /> Sửa
+                      </Button>
+                      <Button variant="outline" size="sm" className="h-7 text-[10px] rounded-lg px-2">
+                        <Package className="h-3 w-3" />
                       </Button>
                     </div>
                   </div>

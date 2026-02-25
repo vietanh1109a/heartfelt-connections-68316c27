@@ -1,14 +1,14 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import { ShoppingCart, CheckCircle, AlertTriangle, TrendingUp } from "lucide-react";
 import { format, subDays } from "date-fns";
 
 const statusConfig: Record<string, { label: string; className: string }> = {
   paid: { label: "Đã thanh toán", className: "bg-blue-500/10 text-blue-400 border-blue-500/20" },
-  delivered: { label: "Đã giao", className: "bg-green-500/10 text-green-400 border-green-500/20" },
+  delivered: { label: "Thành công", className: "bg-green-500/10 text-green-400 border-green-500/20" },
   refunded: { label: "Hoàn tiền", className: "bg-orange-500/10 text-orange-400 border-orange-500/20" },
 };
 
@@ -55,10 +55,10 @@ export const CTVOrders = ({ userId }: Props) => {
   }, [orders]);
 
   const statCards = [
-    { label: "Tổng đơn", value: stats.total, icon: ShoppingCart, color: "text-foreground", bg: "bg-secondary" },
-    { label: "Thành công", value: stats.success, icon: CheckCircle, color: "text-green-400", bg: "bg-green-400/10" },
-    { label: "Hoàn tiền", value: stats.refunded, icon: AlertTriangle, color: "text-orange-400", bg: "bg-orange-400/10" },
-    { label: "Tỉ lệ TC", value: `${stats.rate}%`, icon: TrendingUp, color: "text-primary", bg: "bg-primary/10" },
+    { label: "Tổng đơn", value: stats.total, icon: ShoppingCart, color: "text-foreground" },
+    { label: "Thành công", value: stats.success, icon: CheckCircle, color: "text-green-400" },
+    { label: "Hoàn tiền", value: stats.refunded, icon: AlertTriangle, color: "text-orange-400" },
+    { label: "Tỉ lệ TC", value: `${stats.rate}%`, icon: TrendingUp, color: "text-primary" },
   ];
 
   return (
@@ -68,47 +68,49 @@ export const CTVOrders = ({ userId }: Props) => {
         {statCards.map((s, i) => {
           const Icon = s.icon;
           return (
-            <Card key={i} className="border-border/50">
+            <Card key={i} className="ctv-card ctv-card-hover">
               <CardContent className="p-3">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-[10px] text-muted-foreground uppercase tracking-wide">{s.label}</span>
-                  <div className={`p-1 rounded-md ${s.bg}`}><Icon className={`h-3.5 w-3.5 ${s.color}`} /></div>
+                <div className="flex items-center gap-2.5">
+                  <div className="p-1.5 rounded-lg bg-accent">
+                    <Icon className={`h-3.5 w-3.5 ${s.color}`} />
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">{s.label}</p>
+                    <p className={`text-lg font-bold ${s.color}`}>{s.value}</p>
+                  </div>
                 </div>
-                <p className={`text-lg font-bold ${s.color}`}>{s.value}</p>
               </CardContent>
             </Card>
           );
         })}
       </div>
 
-      {/* Chart */}
-      <Card className="border-border/50">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium text-muted-foreground">Đơn hàng 7 ngày</CardTitle>
-        </CardHeader>
-        <CardContent className="h-[200px]">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-              <XAxis dataKey="date" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
-              <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} allowDecimals={false} />
-              <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }} />
-              <Bar dataKey="orders" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
+      {/* Chart - compact */}
+      <Card className="ctv-card">
+        <CardContent className="p-4">
+          <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Đơn hàng 7 ngày</h3>
+          <div className="h-[160px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={chartData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.5} />
+                <XAxis dataKey="date" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} allowDecimals={false} axisLine={false} tickLine={false} />
+                <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 12, fontSize: 12 }} />
+                <Bar dataKey="orders" fill="hsl(var(--primary))" radius={[6, 6, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
         </CardContent>
       </Card>
 
-      {/* Orders Table — always show header */}
-      <Card className="border-border/50">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium text-muted-foreground">Danh sách đơn hàng</CardTitle>
-        </CardHeader>
-        <CardContent>
+      {/* Orders Table */}
+      <Card className="ctv-card">
+        <CardContent className="p-4">
+          <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Danh sách đơn hàng</h3>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-border/30 text-xs text-muted-foreground uppercase">
+                <tr className="border-b border-border/30 text-[10px] text-muted-foreground uppercase tracking-wider">
                   <th className="text-left py-2 font-medium">Mã đơn</th>
                   <th className="text-left py-2 font-medium">Sản phẩm</th>
                   <th className="text-right py-2 font-medium">Giá</th>
@@ -119,14 +121,14 @@ export const CTVOrders = ({ userId }: Props) => {
               </thead>
               <tbody className="divide-y divide-border/20">
                 {isLoading ? (
-                  <tr><td colSpan={6} className="py-8 text-center text-muted-foreground animate-pulse">Đang tải...</td></tr>
+                  <tr><td colSpan={6} className="py-8 text-center text-muted-foreground animate-pulse text-xs">Đang tải...</td></tr>
                 ) : !orders?.length ? (
-                  <tr><td colSpan={6} className="py-10 text-center text-sm text-muted-foreground">Chưa có đơn hàng nào</td></tr>
+                  <tr><td colSpan={6} className="py-10 text-center text-xs text-muted-foreground">Chưa có đơn hàng nào</td></tr>
                 ) : (
                   orders.map((o: any) => {
                     const st = statusConfig[o.status] ?? { label: o.status, className: "bg-secondary text-muted-foreground" };
                     return (
-                      <tr key={o.id} className="hover:bg-secondary/30 transition-colors">
+                      <tr key={o.id} className="hover:bg-accent/30 transition-colors">
                         <td className="py-2.5 text-[10px] text-muted-foreground font-mono">{o.id.slice(0, 8)}</td>
                         <td className="py-2.5 text-xs font-medium text-foreground truncate max-w-[160px]">{o.ctv_listings?.title ?? "—"}</td>
                         <td className="text-right text-xs text-foreground">{(o.amount ?? 0).toLocaleString("vi-VN")}đ</td>
