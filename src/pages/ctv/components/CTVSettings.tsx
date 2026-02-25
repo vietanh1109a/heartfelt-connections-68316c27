@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "@/hooks/use-toast";
-import { User, Building2, Shield } from "lucide-react";
+import { User, Shield, Award, TrendingUp } from "lucide-react";
 
 interface Props {
   profile: {
@@ -14,9 +14,19 @@ interface Props {
     zalo?: string | null;
     fb_link?: string | null;
     commission_rate?: number;
+    total_earned?: number;
+    total_withdrawn?: number;
+    balance?: number;
     [key: string]: any;
   };
   onSuccess: () => void;
+}
+
+// CTV Level based on total_earned
+function getCTVLevel(totalEarned: number) {
+  if (totalEarned >= 5000000) return { name: "Gold", color: "text-yellow-400", bg: "bg-yellow-400/10", border: "border-yellow-400/30" };
+  if (totalEarned >= 1000000) return { name: "Silver", color: "text-foreground", bg: "bg-secondary", border: "border-border" };
+  return { name: "Bronze", color: "text-orange-400", bg: "bg-orange-400/10", border: "border-orange-400/30" };
 }
 
 export const CTVSettings = ({ profile, onSuccess }: Props) => {
@@ -25,6 +35,8 @@ export const CTVSettings = ({ profile, onSuccess }: Props) => {
   const [zalo, setZalo] = useState(profile.zalo ?? "");
   const [fbLink, setFbLink] = useState(profile.fb_link ?? "");
   const [saving, setSaving] = useState(false);
+
+  const level = getCTVLevel(profile.total_earned ?? 0);
 
   const handleSave = async () => {
     if (!displayName.trim()) {
@@ -51,70 +63,105 @@ export const CTVSettings = ({ profile, onSuccess }: Props) => {
   };
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
+      {/* CTV Level badge + quick stats */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <Card className={`border ${level.border}`}>
+          <CardContent className="p-3 flex items-center gap-3">
+            <div className={`p-2 rounded-lg ${level.bg}`}>
+              <Award className={`h-5 w-5 ${level.color}`} />
+            </div>
+            <div>
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wide">CTV Level</p>
+              <p className={`text-lg font-bold ${level.color}`}>{level.name}</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="border-border/50">
+          <CardContent className="p-3 flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-primary/10">
+              <TrendingUp className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Hoa hồng</p>
+              <p className="text-lg font-bold text-primary">{profile.commission_rate ?? 10}%</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="border-border/50">
+          <CardContent className="p-3 flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-green-400/10">
+              <Shield className="h-5 w-5 text-green-400" />
+            </div>
+            <div>
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Tổng thu</p>
+              <p className="text-lg font-bold text-green-400">{(profile.total_earned ?? 0).toLocaleString("vi-VN")}đ</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
-        {/* Forms */}
-        <div className="lg:col-span-3 space-y-4">
+        {/* Form */}
+        <div className="lg:col-span-3 space-y-3">
           <Card className="border-border/50">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center gap-2">
                 <User className="h-4 w-4" /> Thông tin cá nhân
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <label className="text-sm font-medium text-foreground">Tên hiển thị</label>
-                  <Input value={displayName} onChange={e => setDisplayName(e.target.value)} />
+            <CardContent className="space-y-2.5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-foreground">Tên hiển thị</label>
+                  <Input value={displayName} onChange={e => setDisplayName(e.target.value)} className="h-9" />
                 </div>
-                <div className="space-y-1.5">
-                  <label className="text-sm font-medium text-foreground">Số điện thoại</label>
-                  <Input value={phone} onChange={e => setPhone(e.target.value)} />
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-foreground">Số điện thoại</label>
+                  <Input value={phone} onChange={e => setPhone(e.target.value)} className="h-9" />
                 </div>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <label className="text-sm font-medium text-foreground">Zalo</label>
-                  <Input value={zalo} onChange={e => setZalo(e.target.value)} />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-foreground">Zalo</label>
+                  <Input value={zalo} onChange={e => setZalo(e.target.value)} className="h-9" />
                 </div>
-                <div className="space-y-1.5">
-                  <label className="text-sm font-medium text-foreground">Facebook</label>
-                  <Input placeholder="Link FB" value={fbLink} onChange={e => setFbLink(e.target.value)} />
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-foreground">Facebook</label>
+                  <Input placeholder="Link FB" value={fbLink} onChange={e => setFbLink(e.target.value)} className="h-9" />
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Button className="w-full" onClick={handleSave} disabled={saving}>
+          <Button className="w-full h-9" onClick={handleSave} disabled={saving}>
             {saving ? "Đang lưu..." : "Lưu thay đổi"}
           </Button>
         </div>
 
         {/* Info sidebar */}
-        <div className="lg:col-span-2 space-y-4">
+        <div className="lg:col-span-2 space-y-3">
           <Card className="border-border/50">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                <Shield className="h-4 w-4" /> Thông tin tài khoản
-              </CardTitle>
+              <CardTitle className="text-xs font-medium text-muted-foreground">Thông tin tài khoản</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Phí nền tảng mặc định</span>
+            <CardContent className="space-y-2">
+              <div className="flex justify-between text-xs">
+                <span className="text-muted-foreground">Phí mặc định</span>
                 <span className="text-primary font-bold">{profile.commission_rate ?? 10}%</span>
               </div>
               <div className="h-px bg-border/30" />
-              <div className="text-xs text-muted-foreground space-y-1.5">
-                <p>• Phí thực tế tính theo giá sản phẩm (5–10%)</p>
-                <p>• Doanh thu được giải phóng sau thời gian bảo hành</p>
-                <p>• Rút tiền xử lý trong 24h ngày làm việc</p>
+              <div className="text-[10px] text-muted-foreground space-y-1">
+                <p>• Phí thực tế tính theo giá SP (5–10%)</p>
+                <p>• Doanh thu giải phóng sau bảo hành</p>
+                <p>• Rút tiền xử lý trong 24h</p>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="border-border/50 bg-primary/5">
-            <CardContent className="p-4">
-              <p className="text-xs text-muted-foreground">
+          <Card className="border-border/50 bg-secondary/50">
+            <CardContent className="p-3">
+              <p className="text-[10px] text-muted-foreground">
                 💡 Điền đầy đủ thông tin ngân hàng để rút tiền nhanh hơn. Tên chủ TK phải trùng với CMND/CCCD.
               </p>
             </CardContent>
