@@ -96,9 +96,8 @@ Deno.serve(async (req) => {
     // Record VIP purchase
     await supabaseAdmin.from("vip_purchases").insert({
       user_id: user.id,
-      vip_plan_id: plan.id,
+      plan_id: plan.id,
       amount_paid: plan.price,
-      vip_expires_at: newExpiry.toISOString(),
     });
 
     // Upgrade cookie slots for VIP (read from app_settings)
@@ -109,9 +108,9 @@ Deno.serve(async (req) => {
     // Log transaction
     await supabaseAdmin.from("transactions").insert({
       user_id: user.id,
-      amount: plan.price,
-      type: "usage",
-      memo: `Mua ${plan.name}`,
+      amount: -plan.price,
+      type: "vip_purchase",
+      description: `Mua ${plan.name}`,
     });
 
     return new Response(JSON.stringify({

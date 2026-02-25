@@ -138,9 +138,9 @@ Deno.serve(async (req) => {
     // Log transaction
     await admin.from("transactions").insert({
       user_id: user.id,
-      amount: plan.price,
-      type: "usage",
-      memo: `Mua gói ${plan.name}`,
+      amount: -plan.price,
+      type: "plan_purchase",
+      description: `Mua gói ${plan.name}`,
     });
 
     return new Response(JSON.stringify({

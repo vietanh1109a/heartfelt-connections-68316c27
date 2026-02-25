@@ -175,7 +175,7 @@ Deno.serve(async (req) => {
       user_id: deposit.user_id,
       type: "deposit",
       amount: deposit.amount,
-      memo: `SePay ${depositCode} - TX#${payload.id}`,
+      description: `SePay ${depositCode} - TX#${payload.id}`,
     });
 
     console.log(`✅ Deposit ${depositCode} paid: +${deposit.amount}đ for user ${deposit.user_id}`);

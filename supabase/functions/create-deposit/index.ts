@@ -42,16 +42,15 @@ Deno.serve(async (req) => {
       { global: { headers: { Authorization: authHeader } } }
     );
 
-    const token = authHeader.replace("Bearer ", "");
-    const { data: authData, error: authError } = await supabase.auth.getClaims(token);
-    if (authError || !authData?.claims) {
+    const { data: { user }, error: userErr } = await supabase.auth.getUser();
+    if (userErr || !user) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const userId = authData.claims.sub;
+    const userId = user.id;
 
     const body = await req.json();
     const amount = Number(body.amount);
@@ -122,7 +121,7 @@ Deno.serve(async (req) => {
     const accountNo = settingsMap["sepay_account_number"] ?? "";
     const accountName = settingsMap["account_name"] ?? "";
 
-    // SePay QR: https://qr.sepay.vn/img?acc=STK&bank=NGAN_HANG&amount=SO_TIEN&des=NOI_DUNG
+    // SePay QR
     const qrUrl = `https://qr.sepay.vn/img?acc=${accountNo}&bank=${bankCode}&amount=${amount}&des=${encodeURIComponent(depositCode)}`;
 
     return new Response(

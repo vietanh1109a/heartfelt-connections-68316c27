@@ -140,8 +140,8 @@ Deno.serve(async (req) => {
     await admin.from("transactions").insert({
       user_id: user.id,
       amount: -product.price,
-      type: "usage",
-      memo: `Mua sản phẩm: ${product.name}`,
+      type: "product_purchase",
+      description: `Mua sản phẩm: ${product.name}`,
     });
 
     return new Response(JSON.stringify({
