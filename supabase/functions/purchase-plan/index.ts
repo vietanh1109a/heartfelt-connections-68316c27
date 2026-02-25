@@ -75,8 +75,32 @@ Deno.serve(async (req) => {
       });
     }
 
-    // FIX: Use atomic RPC to deduct balance — prevents race condition
-    // Deduct bonus first (if active), then permanent balance
+    // Atomically assign account with optimistic lock on is_assigned = false
+    const expiresAt = new Date();
+    expiresAt.setMonth(expiresAt.getMonth() + plan.duration_months);
+
+    const { data: assignedRows, error: accErr } = await admin
+      .from("netflix_accounts")
+      .update({
+        is_assigned: true,
+        assigned_to: user.id,
+        assigned_at: new Date().toISOString(),
+        expires_at: expiresAt.toISOString(),
+      })
+      .eq("id", account.id)
+      .eq("is_assigned", false)  // optimistic lock guard
+      .select("id");
+
+    if (accErr) throw new Error("Lỗi gán tài khoản");
+
+    // Race condition guard: if no rows updated, another request already claimed this account
+    if (!assignedRows || assignedRows.length === 0) {
+      return new Response(JSON.stringify({ error: "Tài khoản vừa được người khác nhận. Vui lòng thử lại." }), {
+        status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Deduct balance (bonus first, then permanent)
     let remainingDeduct = plan.price;
     let newBonusBalance = bonusBalance;
     let newPermanentDelta = 0;
@@ -106,22 +130,6 @@ Deno.serve(async (req) => {
         .eq("user_id", user.id);
       if (balErr) throw new Error("Lỗi trừ bonus");
     }
-
-    // Calculate expiry
-    const expiresAt = new Date();
-    expiresAt.setMonth(expiresAt.getMonth() + plan.duration_months);
-
-    // Assign account
-    const { error: accErr } = await admin
-      .from("netflix_accounts")
-      .update({
-        is_assigned: true,
-        assigned_to: user.id,
-        assigned_at: new Date().toISOString(),
-        expires_at: expiresAt.toISOString(),
-      })
-      .eq("id", account.id);
-    if (accErr) throw new Error("Lỗi gán tài khoản");
 
     // Create purchase record
     const { error: purErr } = await admin

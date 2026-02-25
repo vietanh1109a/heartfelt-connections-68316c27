@@ -52,25 +52,27 @@ export function useIndexData() {
     refetchInterval: 30000,
   });
 
-  // Cookie assignments — always fetch via edge function (bypasses RLS on cookie_stock)
+  // Cookie assignments — read existing assignments only, no side-effect creation on page load
   const { data: cookieAssignments } = useQuery({
     queryKey: ["cookie-assignments", user?.id],
     queryFn: async () => {
       if (!user) return [];
       
-      const { data: result, error } = await supabase.functions.invoke("assign-cookie", {
-        body: {},
-      });
+      // Only read existing assignments — do NOT call assign-cookie here
+      // assign-cookie has a side-effect of creating new assignments and should
+      // only be triggered when the user explicitly watches
+      const { data, error } = await supabase
+        .from("user_cookie_assignment")
+        .select("id, is_active, cookie_id")
+        .eq("user_id", user.id)
+        .eq("is_active", true);
       
-      console.log("Cookie assignments result:", result);
-      
-      if (error || result?.error) {
-        console.error("Cookie assign/fetch failed:", error || result?.error);
+      if (error) {
+        console.error("Cookie assignment fetch failed:", error);
         return [];
       }
       
-      const assignments = result?.assignments || [];
-      return assignments.map((a: any) => ({
+      return (data ?? []).map((a: any) => ({
         id: a.id,
         cookie_stock: { is_active: a.is_active },
       }));

@@ -6,16 +6,15 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-// SePay webhook payload shape
 interface SePayPayload {
-  id: number;               // Transaction ID on SePay
-  gateway: string;          // Bank brand name
-  transactionDate: string;  // Transaction time
-  accountNumber: string;    // Bank account number
-  code: string | null;      // Payment code detected by SePay
-  content: string;          // Transfer description (contains deposit_code)
-  transferType: string;     // "in" or "out"
-  transferAmount: number;   // Amount in VND
+  id: number;
+  gateway: string;
+  transactionDate: string;
+  accountNumber: string;
+  code: string | null;
+  content: string;
+  transferType: string;
+  transferAmount: number;
   accumulated: number;
   subAccount: string | null;
   referenceCode: string;
@@ -23,11 +22,9 @@ interface SePayPayload {
 }
 
 function parseDepositCode(content: string): string | null {
-  // Match NAP followed by 6 alphanumeric chars, with or without dash
   const upper = content.toUpperCase();
   const match = upper.match(/NAP-?([A-Z0-9]{6})/);
   if (!match) return null;
-  // Always return without dash (canonical format)
   return `NAP${match[1]}`;
 }
 
@@ -44,7 +41,6 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // Verify webhook token: SePay sends "Authorization: Apikey <token>"
     const authHeader = req.headers.get("Authorization") ?? "";
     const webhookToken = Deno.env.get("SEPAY_WEBHOOK_TOKEN") ?? "";
 
@@ -62,7 +58,6 @@ Deno.serve(async (req) => {
     const payload: SePayPayload = await req.json();
     console.log("SePay webhook received:", JSON.stringify(payload));
 
-    // Only process incoming transfers
     if (payload.transferType !== "in") {
       return new Response(JSON.stringify({ success: true, message: "Skipped: not an incoming transfer" }), {
         status: 200,
@@ -75,18 +70,13 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // Idempotency: check if this event was already processed
+    // Idempotency check
     const eventId = `sepay-${payload.id}`;
     const { error: dupError } = await supabase
       .from("webhook_events")
-      .insert({
-        provider: "sepay",
-        event_id: eventId,
-        payload,
-      });
+      .insert({ provider: "sepay", event_id: eventId, payload });
 
     if (dupError) {
-      // Unique constraint violation = already processed
       if (dupError.code === "23505") {
         console.log("Duplicate webhook event, skipping:", eventId);
         return new Response(JSON.stringify({ success: true, message: "Already processed" }), {
@@ -97,7 +87,6 @@ Deno.serve(async (req) => {
       throw dupError;
     }
 
-    // Parse deposit_code from transfer content
     const depositCode = parseDepositCode(payload.content ?? "");
     if (!depositCode) {
       console.log("No deposit_code found in content:", payload.content);
@@ -123,7 +112,6 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Check amount >= deposit.amount
     if (payload.transferAmount < deposit.amount) {
       console.log(`Amount mismatch: received ${payload.transferAmount}, expected ${deposit.amount}`);
       return new Response(JSON.stringify({ success: true, message: "Amount too low" }), {
@@ -132,34 +120,16 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Check not expired
     if (new Date(deposit.expires_at) < new Date()) {
-      await supabase
-        .from("deposits")
-        .update({ status: "expired" })
-        .eq("id", deposit.id);
+      await supabase.from("deposits").update({ status: "expired" }).eq("id", deposit.id);
       return new Response(JSON.stringify({ success: true, message: "Deposit expired" }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Atomic: update deposit → paid
-    const { error: updateDepositError } = await supabase
-      .from("deposits")
-      .update({
-        status: "paid",
-        sepay_tx_id: String(payload.id),
-        paid_at: new Date().toISOString(),
-      })
-      .eq("id", deposit.id)
-      .eq("status", "pending"); // extra guard
-
-    if (updateDepositError) {
-      throw updateDepositError;
-    }
-
-    // Credit balance using existing RPC
+    // FIX: Credit balance FIRST, then mark as paid.
+    // If balance credit fails, deposit stays "pending" and can be retried.
     const { error: balanceError } = await supabase.rpc("increment_balance", {
       target_user_id: deposit.user_id,
       delta: deposit.amount,
@@ -170,7 +140,23 @@ Deno.serve(async (req) => {
       throw balanceError;
     }
 
-    // Insert into transactions ledger
+    // Now mark deposit as paid (balance already credited, so state is consistent)
+    const { error: updateDepositError } = await supabase
+      .from("deposits")
+      .update({
+        status: "paid",
+        sepay_tx_id: String(payload.id),
+        paid_at: new Date().toISOString(),
+      })
+      .eq("id", deposit.id)
+      .eq("status", "pending");
+
+    if (updateDepositError) {
+      console.error("Failed to mark deposit as paid after crediting balance:", updateDepositError.message);
+      // Balance was already credited — log but don't throw to avoid double-credit on retry
+    }
+
+    // Insert transaction ledger
     await supabase.from("transactions").insert({
       user_id: deposit.user_id,
       type: "deposit",
