@@ -15,7 +15,7 @@ import { formatCurrency } from "@/lib/formatCurrency";
 import { format } from "date-fns";
 import {
   Users, Clock, CheckCircle, XCircle, Ban, ShieldCheck, Eye,
-  Percent, Search, UserPlus, DollarSign, ShoppingCart, TrendingUp, Unlock,
+  Percent, Search, UserPlus, DollarSign, ShoppingCart, TrendingUp, Unlock, Trash2,
 } from "lucide-react";
 
 type StatusFilter = "all" | "pending" | "approved" | "rejected" | "banned";
@@ -235,6 +235,30 @@ export const CTVManagementTab = () => {
     setCommissionRate("");
   };
 
+  const handleDelete = async (ctv: any) => {
+    setProcessing(true);
+    // Delete related data first to avoid FK violations
+    await supabase.from("ctv_listing_items").delete().eq("ctv_user_id", ctv.user_id);
+    await supabase.from("ctv_orders").delete().eq("ctv_user_id", ctv.user_id);
+    await supabase.from("ctv_listings").delete().eq("ctv_user_id", ctv.user_id);
+    await supabase.from("ctv_payout_requests").delete().eq("ctv_user_id", ctv.user_id);
+    const { error: profileErr } = await supabase.from("ctv_profiles").delete().eq("user_id", ctv.user_id);
+    if (profileErr) {
+      toast({ title: "Lỗi xóa CTV profile", description: profileErr.message, variant: "destructive" });
+      setProcessing(false);
+      setActionDialog(null);
+      return;
+    }
+    await supabase.from("ctv_registrations").delete().eq("user_id", ctv.user_id);
+    await logAudit("ctv_delete", ctv.user_id, { display_name: ctv.display_name });
+    toast({ title: "Đã xóa CTV: " + ctv.display_name });
+    queryClient.invalidateQueries({ queryKey: ["admin-ctv-profiles"] });
+    queryClient.invalidateQueries({ queryKey: ["admin-ctv-registrations"] });
+    setProcessing(false);
+    setActionDialog(null);
+    setSelectedCTV(null);
+  };
+
   const getRegistration = (userId: string) => ctvRegistrations?.find(r => r.user_id === userId);
 
   if (isLoading) return <div className="text-muted-foreground animate-pulse py-8 text-center">Đang tải...</div>;
@@ -388,6 +412,10 @@ export const CTVManagementTab = () => {
                             <Unlock className="h-3 w-3 mr-1" /> Mở khóa
                           </Button>
                         )}
+                        <Button variant="ghost" size="sm" className="h-7 text-xs text-destructive hover:text-destructive"
+                          onClick={() => setActionDialog({ type: "delete", ctv })}>
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -536,6 +564,10 @@ export const CTVManagementTab = () => {
                     <Unlock className="h-3 w-3 mr-1" /> Mở khóa
                   </Button>
                 )}
+                <Button variant="destructive" size="sm"
+                  onClick={() => setActionDialog({ type: "delete", ctv: selectedCTV })}>
+                  <Trash2 className="h-3 w-3 mr-1" /> Xóa CTV
+                </Button>
               </div>
             </div>
           )}
@@ -605,6 +637,24 @@ export const CTVManagementTab = () => {
             <Button variant="outline" onClick={() => setActionDialog(null)}>Hủy</Button>
             <Button onClick={() => handleUpdateCommission(actionDialog!.ctv)} disabled={processing}>
               {processing ? "Đang xử lý..." : "Cập nhật"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Dialog */}
+      <Dialog open={actionDialog?.type === "delete"} onOpenChange={open => !open && setActionDialog(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="text-destructive">Xóa CTV: {actionDialog?.ctv?.display_name}</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Thao tác này sẽ xóa toàn bộ dữ liệu CTV bao gồm profile, đăng ký, sản phẩm, đơn hàng và yêu cầu rút tiền. <strong className="text-foreground">Không thể hoàn tác.</strong>
+          </p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setActionDialog(null)}>Hủy</Button>
+            <Button variant="destructive" onClick={() => handleDelete(actionDialog!.ctv)} disabled={processing}>
+              {processing ? "Đang xóa..." : "Xác nhận xóa"}
             </Button>
           </DialogFooter>
         </DialogContent>
