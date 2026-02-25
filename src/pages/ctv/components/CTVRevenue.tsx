@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import { format, subDays, isAfter, startOfDay } from "date-fns";
-import { TrendingUp, TrendingDown, DollarSign, BarChart3 } from "lucide-react";
+import { TrendingUp, TrendingDown, DollarSign, BarChart3, ArrowUpRight } from "lucide-react";
 
 interface Props {
   userId: string;
@@ -87,15 +87,15 @@ export const CTVRevenue = ({ userId }: Props) => {
   return (
     <div className="space-y-4">
       {/* Period pills */}
-      <div className="flex gap-1">
+      <div className="flex gap-1 bg-accent/30 p-1 rounded-xl w-fit border border-border/15">
         {pillItems.map(p => (
           <button
             key={p.key}
             onClick={() => setPeriod(p.key)}
-            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
               period === p.key
-                ? "bg-primary text-primary-foreground"
-                : "bg-accent text-muted-foreground hover:text-foreground"
+                ? "bg-primary text-primary-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
             }`}
           >
             {p.label}
@@ -106,9 +106,12 @@ export const CTVRevenue = ({ userId }: Props) => {
       {/* KPI row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
         {breakdownCards.map((b, i) => (
-          <Card key={i} className="ctv-card ctv-card-hover">
+          <Card key={i} className="ctv-card ctv-card-hover group">
             <CardContent className="p-3">
-              <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">{b.label}</p>
+              <div className="flex items-start justify-between mb-1">
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">{b.label}</p>
+                <ArrowUpRight className="h-3 w-3 text-muted-foreground/20" />
+              </div>
               <p className="text-lg font-bold text-primary">{b.value.toLocaleString("vi-VN")}đ</p>
             </CardContent>
           </Card>
@@ -123,17 +126,17 @@ export const CTVRevenue = ({ userId }: Props) => {
               <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2 mb-3">
                 <BarChart3 className="h-3.5 w-3.5" /> Biểu đồ doanh thu
               </h3>
-              <div className="h-[240px]">
+              <div className="h-[220px]">
                 {chartData.length > 0 ? (
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={chartData}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.5} />
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
                       <XAxis dataKey="date" tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }} interval={Math.max(0, Math.floor(days / 10) - 1)} axisLine={false} tickLine={false} />
                       <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
                       <Tooltip
-                        contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 12, fontSize: 12 }}
+                        contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 12, fontSize: 12, boxShadow: "0 8px 30px rgba(0,0,0,0.3)" }}
                         formatter={(v: number) => [`${v.toLocaleString("vi-VN")}đ`, "Doanh thu"]}
-                        cursor={{ fill: "hsl(var(--accent))", opacity: 0.5 }}
+                        cursor={{ fill: "hsl(var(--accent))", opacity: 0.3 }}
                       />
                       <Bar dataKey="revenue" fill="hsl(var(--primary))" radius={[6, 6, 0, 0]} />
                     </BarChart>
@@ -149,7 +152,7 @@ export const CTVRevenue = ({ userId }: Props) => {
         </div>
 
         <div className="lg:col-span-3 space-y-3">
-          <Card className="ctv-card">
+          <Card className="ctv-card ctv-card-hover">
             <CardContent className="p-4 flex items-center gap-3">
               <div className={`p-2.5 rounded-xl ${breakdowns.growth >= 0 ? "bg-green-500/10" : "bg-destructive/10"}`}>
                 {breakdowns.growth >= 0 ? (
@@ -167,7 +170,7 @@ export const CTVRevenue = ({ userId }: Props) => {
             </CardContent>
           </Card>
 
-          <Card className="ctv-card">
+          <Card className="ctv-card ctv-card-hover">
             <CardContent className="p-4 flex items-center gap-3">
               <div className="p-2.5 rounded-xl bg-primary/10">
                 <DollarSign className="h-5 w-5 text-primary" />
@@ -175,7 +178,7 @@ export const CTVRevenue = ({ userId }: Props) => {
               <div>
                 <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Tổng doanh thu</p>
                 <p className="text-xl font-bold text-foreground">{breakdowns.all.toLocaleString("vi-VN")}đ</p>
-                <p className="text-[10px] text-muted-foreground">{validOrders.length} đơn thành công</p>
+                <p className="text-[10px] text-muted-foreground">{validOrders.length} đơn TC</p>
               </div>
             </CardContent>
           </Card>
@@ -189,7 +192,7 @@ export const CTVRevenue = ({ userId }: Props) => {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-border/30 text-[10px] text-muted-foreground uppercase tracking-wider">
+                <tr className="border-b border-border/20 text-[10px] text-muted-foreground uppercase tracking-wider">
                   <th className="text-left py-2 font-medium">Sản phẩm</th>
                   <th className="text-right py-2 font-medium">Giá bán</th>
                   <th className="text-right py-2 font-medium">Hoa hồng</th>
@@ -197,14 +200,12 @@ export const CTVRevenue = ({ userId }: Props) => {
                   <th className="text-right py-2 font-medium">Ngày</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border/20">
+              <tbody className="divide-y divide-border/10">
                 {(!orders || orders.length === 0) ? (
-                  <tr>
-                    <td colSpan={5} className="py-8 text-center text-xs text-muted-foreground">Chưa có giao dịch</td>
-                  </tr>
+                  <tr><td colSpan={5} className="py-8 text-center text-xs text-muted-foreground">Chưa có giao dịch</td></tr>
                 ) : (
                   orders.slice(0, 15).map((o: any, idx: number) => (
-                    <tr key={`${o.created_at}-${idx}`} className="hover:bg-accent/30 transition-colors">
+                    <tr key={`${o.created_at}-${idx}`} className="hover:bg-accent/20 transition-colors">
                       <td className="py-2 text-xs text-foreground truncate max-w-[160px]">{o.ctv_listings?.title ?? "—"}</td>
                       <td className="text-right text-xs text-muted-foreground">{(o.amount ?? 0).toLocaleString("vi-VN")}đ</td>
                       <td className="text-right text-xs text-primary font-semibold">{(o.commission ?? 0).toLocaleString("vi-VN")}đ</td>

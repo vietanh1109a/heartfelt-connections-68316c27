@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "@/hooks/use-toast";
-import { Wallet, Clock, ArrowDownToLine, CheckCircle, XCircle, AlertTriangle, Banknote } from "lucide-react";
+import { Wallet, Clock, ArrowDownToLine, CheckCircle, XCircle, AlertTriangle, Banknote, ArrowUpRight } from "lucide-react";
 import { format } from "date-fns";
 
 const statusConfig: Record<string, { label: string; icon: typeof CheckCircle; className: string }> = {
@@ -57,7 +57,7 @@ export const CTVWithdraw = ({ profile, onSuccess }: Props) => {
   }, [payouts, profile.total_withdrawn]);
 
   const amountNum = parseInt(amount) || 0;
-  const fee = Math.round(amountNum * 0); // No fee currently
+  const fee = Math.round(amountNum * 0);
   const receive = amountNum - fee;
 
   const handleSubmit = async () => {
@@ -103,15 +103,16 @@ export const CTVWithdraw = ({ profile, onSuccess }: Props) => {
         ].map((s, i) => {
           const Icon = s.icon;
           return (
-            <Card key={i} className="ctv-card ctv-card-hover">
-              <CardContent className="p-3 flex items-center gap-2.5">
-                <div className={`p-2 rounded-xl ${s.iconBg}`}>
-                  <Icon className={`h-4 w-4 ${s.color}`} />
+            <Card key={i} className="ctv-card ctv-card-hover group">
+              <CardContent className="p-3">
+                <div className="flex items-start justify-between mb-2">
+                  <div className={`p-2 rounded-xl ${s.iconBg} group-hover:scale-110 transition-transform`}>
+                    <Icon className={`h-4 w-4 ${s.color}`} />
+                  </div>
+                  <ArrowUpRight className="h-3 w-3 text-muted-foreground/20" />
                 </div>
-                <div>
-                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">{s.label}</p>
-                  <p className={`text-lg font-bold ${s.color}`}>{s.value.toLocaleString("vi-VN")}đ</p>
-                </div>
+                <p className={`text-lg font-bold ${s.color}`}>{s.value.toLocaleString("vi-VN")}đ</p>
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">{s.label}</p>
               </CardContent>
             </Card>
           );
@@ -170,17 +171,17 @@ export const CTVWithdraw = ({ profile, onSuccess }: Props) => {
             <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Lịch sử rút tiền</h3>
             {(!payouts || payouts.length === 0) ? (
               <div className="py-10 text-center space-y-2">
-                <Wallet className="h-7 w-7 mx-auto text-muted-foreground/15" />
+                <Wallet className="h-7 w-7 mx-auto text-muted-foreground/10" />
                 <p className="text-xs text-muted-foreground">Chưa có yêu cầu nào</p>
               </div>
             ) : (
-              <div className="divide-y divide-border/20">
+              <div className="divide-y divide-border/10">
                 {payouts.map((p) => {
                   const st = statusConfig[p.status] ?? statusConfig.pending;
                   const Icon = st.icon;
                   return (
-                    <div key={p.id} className="flex items-center gap-2.5 py-2.5">
-                      <div className={`p-1.5 rounded-lg bg-accent ${st.className}`}>
+                    <div key={p.id} className="flex items-center gap-2.5 py-2.5 hover:bg-accent/20 transition-colors rounded-lg px-1">
+                      <div className={`p-1.5 rounded-lg bg-accent/50 ${st.className}`}>
                         <Icon className="h-3.5 w-3.5" />
                       </div>
                       <div className="flex-1 min-w-0">
