@@ -39,14 +39,13 @@ Deno.serve(async (req) => {
     const userClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, {
       global: { headers: { Authorization: authHeader } },
     });
-    const token = authHeader.replace("Bearer ", "");
-    const { data: claimsData, error: claimsErr } = await userClient.auth.getClaims(token);
-    if (claimsErr || !claimsData?.claims) {
+    const { data: { user }, error: userErr } = await userClient.auth.getUser();
+    if (userErr || !user) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    const userId = claimsData.claims.sub;
+    const userId = user.id;
 
     const { reason, details } = await req.json();
 
@@ -131,8 +130,8 @@ Deno.serve(async (req) => {
         await supabaseAdmin.from("transactions").insert({
           user_id: userId,
           amount: 0,
-          type: "usage",
-          memo: `🚫 Bị ban 1 ngày — Lạm dụng tính năng báo hỏng (${(recentReports ?? 0) + 1} lần trong ${spamWindow} phút)`,
+          type: "admin_deduct",
+          description: `🚫 Bị ban 1 ngày — Lạm dụng tính năng báo hỏng (${(recentReports ?? 0) + 1} lần trong ${spamWindow} phút)`,
         });
 
         return new Response(JSON.stringify({
@@ -243,8 +242,8 @@ Deno.serve(async (req) => {
     await supabaseAdmin.from("transactions").insert({
       user_id: userId,
       amount: 0,
-      type: "usage",
-      memo: `🔄 Báo hỏng & đổi cookie — Lý do: ${reason || "Không rõ"}${details ? ` (${details})` : ""}`,
+      type: "cookie_view",
+      description: `🔄 Báo hỏng & đổi cookie — Lý do: ${reason || "Không rõ"}${details ? ` (${details})` : ""}`,
     });
 
     return new Response(JSON.stringify({
