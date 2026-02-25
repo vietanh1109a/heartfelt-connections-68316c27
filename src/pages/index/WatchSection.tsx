@@ -160,12 +160,14 @@ const WatchSection = memo(({
         </p>
         <div className="space-y-2.5">
           <button
-            onClick={() => isVip ? handleWatch() : onShowWatchModal()}
-            disabled={watchLoading || (
-              ((profile as any)?.free_views_left ?? 0) === 0 &&
-              ((profile as any)?.vip_views_left ?? 0) === 0 &&
-              ((profile?.balance ?? 0) + (profile?.bonus_balance ?? 0)) < 500
-            )}
+            onClick={() => {
+              if (!user) {
+                window.location.href = "/auth";
+                return;
+              }
+              isVip ? handleWatch() : onShowWatchModal();
+            }}
+            disabled={watchLoading}
             className="w-full flex items-center justify-center gap-2 rounded-lg py-3 font-bold text-sm text-primary-foreground transition-all hover:opacity-90 active:scale-[0.97] disabled:opacity-50"
             style={{ background: "linear-gradient(135deg, #E50914, #B20710)" }}
           >
