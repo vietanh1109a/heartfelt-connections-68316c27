@@ -4,7 +4,10 @@ import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
-import { CheckCircle2, Crown, Menu } from "lucide-react";
+import { CheckCircle2, Crown, Menu, Sun, Moon } from "lucide-react";
+import { useTheme } from "@/lib/theme";
+import { useLanguage } from "@/lib/language";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import Products from "./Products";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -20,6 +23,56 @@ import {
   TvConfirmModal, ReportCookieDialog,
 } from "./index/IndexModals";
 import { DepositModal } from "./index/DepositModal";
+
+/* Top bar with theme/language toggles */
+function TopBar({ sidebarCollapsed, onToggleSidebar, isVip, profile, userEmail }: {
+  sidebarCollapsed: boolean; onToggleSidebar: () => void;
+  isVip: boolean; profile: any; userEmail?: string;
+}) {
+  const { theme, toggleTheme } = useTheme();
+  const { lang, setLang, t } = useLanguage();
+  return (
+    <header className="flex items-center justify-between px-4 md:px-8 py-3 border-b border-border/30">
+      <button onClick={onToggleSidebar} className="p-2 rounded-lg hover:bg-accent transition-colors text-muted-foreground hover:text-foreground">
+        <Menu className="h-5 w-5" />
+      </button>
+      <div className="flex items-center gap-2">
+        {isVip && (
+          <span className="text-xs font-bold text-yellow-500 flex items-center gap-1 bg-yellow-500/10 px-2.5 py-1 rounded-full border border-yellow-500/20">
+            <Crown className="h-3 w-3" /> VIP
+          </span>
+        )}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button onClick={() => setLang(lang === "vi" ? "en" : "vi")} className="h-8 w-8 rounded-lg border border-border/40 bg-card hover:bg-accent flex items-center justify-center transition-colors">
+              <span className="text-xs font-bold text-foreground">{lang === "vi" ? "EN" : "VI"}</span>
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom"><p>{lang === "vi" ? "Switch to English" : "Chuyển sang Tiếng Việt"}</p></TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button onClick={toggleTheme} className="h-8 w-8 rounded-lg border border-border/40 bg-card hover:bg-accent flex items-center justify-center transition-colors">
+              {theme === "dark" ? <Sun className="h-4 w-4 text-yellow-400" /> : <Moon className="h-4 w-4 text-foreground" />}
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom"><p>{theme === "dark" ? "Light mode" : "Dark mode"}</p></TooltipContent>
+        </Tooltip>
+        <div className="text-right hidden sm:block ml-1">
+          <p className="text-sm font-medium text-foreground">{profile?.display_name || "User"}</p>
+          <p className="text-[10px] text-muted-foreground">
+            {t("Số dư", "Balance")}: {((profile?.balance ?? 0) + (profile?.bonus_balance ?? 0)).toLocaleString("vi-VN")}đ
+          </p>
+        </div>
+        <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center">
+          <span className="text-primary-foreground font-bold text-sm">
+            {(profile?.display_name || userEmail || "U").charAt(0).toUpperCase()}
+          </span>
+        </div>
+      </div>
+    </header>
+  );
+}
 
 const Index = () => {
   const {
@@ -294,32 +347,13 @@ const Index = () => {
         {/* Main area */}
         <div className={`flex-1 transition-all duration-300 relative z-10 ${sidebarCollapsed ? "md:ml-16" : "md:ml-[220px]"}`}>
           {/* Topbar */}
-          <header className="flex items-center justify-between px-4 md:px-8 py-3 border-b border-border/30">
-            <button
-              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-              className="p-2 rounded-lg hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
-            >
-              <Menu className="h-5 w-5" />
-            </button>
-            <div className="flex items-center gap-3">
-              {isVip && (
-                <span className="text-xs font-bold text-yellow-500 flex items-center gap-1 bg-yellow-500/10 px-2.5 py-1 rounded-full border border-yellow-500/20">
-                  <Crown className="h-3 w-3" /> VIP
-                </span>
-              )}
-              <div className="text-right hidden sm:block">
-                <p className="text-sm font-medium text-foreground">{profile?.display_name || "User"}</p>
-                <p className="text-[10px] text-muted-foreground">
-                  Số dư: {((profile?.balance ?? 0) + (profile?.bonus_balance ?? 0)).toLocaleString("vi-VN")}đ
-                </p>
-              </div>
-              <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center">
-                <span className="text-primary-foreground font-bold text-sm">
-                  {(profile?.display_name || user?.email || "U").charAt(0).toUpperCase()}
-                </span>
-              </div>
-            </div>
-          </header>
+          <TopBar
+            sidebarCollapsed={sidebarCollapsed}
+            onToggleSidebar={() => setSidebarCollapsed(!sidebarCollapsed)}
+            isVip={isVip}
+            profile={profile}
+            userEmail={user?.email}
+          />
 
           {/* Tab Content */}
           <main className="max-w-5xl mx-auto px-4 md:px-8 pb-16 pt-6">
