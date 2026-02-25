@@ -2,7 +2,7 @@ import { memo } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   LogOut, Wallet, User, History, Puzzle, Shield,
-  Crown, ChevronDown, AlertTriangle,
+  Crown, ChevronDown, AlertTriangle, Globe,
 } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
@@ -46,14 +46,28 @@ const PageHeader = memo(({
           NETFLIX
         </h1>
         <div className="flex items-center gap-3">
-          {/* Language toggle pill */}
-          <button
-            onClick={() => setLang(lang === "vi" ? "en" : "vi")}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-border/30 bg-card/60 backdrop-blur-md text-xs font-medium transition-all duration-200 hover:bg-accent/60 shadow-sm"
-          >
-            <span className="text-sm leading-none">{lang === "vi" ? "🇻🇳" : "🇬🇧"}</span>
-            <span className="text-foreground/80">{lang === "vi" ? "VI" : "EN"}</span>
-          </button>
+          {/* Premium language pill dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="h-9 flex items-center gap-2 px-3.5 rounded-full font-medium text-sm transition-all duration-200 border border-border/[0.1] bg-secondary/40 hover:bg-secondary/70 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40">
+                <Globe className="h-4 w-4 text-muted-foreground" />
+                <span className="text-foreground">{lang === "vi" ? "VI" : "EN"}</span>
+                <ChevronDown className="h-3 w-3 text-muted-foreground" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-44 bg-card border-border/40">
+              <DropdownMenuItem onClick={() => setLang("vi")} className="cursor-pointer gap-2.5">
+                <span className="text-base">🇻🇳</span>
+                <span className="flex-1">Tiếng Việt</span>
+                {lang === "vi" && <span className="text-primary text-xs">✓</span>}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setLang("en")} className="cursor-pointer gap-2.5">
+                <span className="text-base">🇬🇧</span>
+                <span className="flex-1">English</span>
+                {lang === "en" && <span className="text-primary text-xs">✓</span>}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
 
           {/* User dropdown */}
           <DropdownMenu>
