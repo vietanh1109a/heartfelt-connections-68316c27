@@ -24,41 +24,58 @@ import {
 } from "./index/IndexModals";
 import { DepositModal } from "./index/DepositModal";
 
-/* Top bar with theme/language toggles */
+/* Premium glass pill control group */
 function TopBar({ sidebarCollapsed, onToggleSidebar, isVip, profile, userEmail }: {
   sidebarCollapsed: boolean; onToggleSidebar: () => void;
   isVip: boolean; profile: any; userEmail?: string;
 }) {
   const { theme, toggleTheme } = useTheme();
   const { lang, setLang, t } = useLanguage();
+
   return (
     <header className="flex items-center justify-between px-4 md:px-8 py-3 border-b border-border/30">
       <button onClick={onToggleSidebar} className="p-2 rounded-lg hover:bg-accent transition-colors text-muted-foreground hover:text-foreground">
         <Menu className="h-5 w-5" />
       </button>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-3">
         {isVip && (
           <span className="text-xs font-bold text-yellow-500 flex items-center gap-1 bg-yellow-500/10 px-2.5 py-1 rounded-full border border-yellow-500/20">
             <Crown className="h-3 w-3" /> VIP
           </span>
         )}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button onClick={() => setLang(lang === "vi" ? "en" : "vi")} className="h-8 w-8 rounded-lg border border-border/40 bg-card hover:bg-accent flex items-center justify-center transition-colors">
-              <span className="text-xs font-bold text-foreground">{lang === "vi" ? "EN" : "VI"}</span>
-            </button>
-          </TooltipTrigger>
-          <TooltipContent side="bottom"><p>{lang === "vi" ? "Switch to English" : "Chuyển sang Tiếng Việt"}</p></TooltipContent>
-        </Tooltip>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button onClick={toggleTheme} className="h-8 w-8 rounded-lg border border-border/40 bg-card hover:bg-accent flex items-center justify-center transition-colors">
-              {theme === "dark" ? <Sun className="h-4 w-4 text-yellow-400" /> : <Moon className="h-4 w-4 text-foreground" />}
-            </button>
-          </TooltipTrigger>
-          <TooltipContent side="bottom"><p>{theme === "dark" ? "Light mode" : "Dark mode"}</p></TooltipContent>
-        </Tooltip>
-        <div className="text-right hidden sm:block ml-1">
+
+        {/* Glass pill control group */}
+        <div className="flex items-center gap-0 rounded-full border border-border/30 bg-card/60 backdrop-blur-md p-1 shadow-sm">
+          {/* Theme toggle – animated switch */}
+          <button
+            onClick={toggleTheme}
+            className="relative flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-200 hover:bg-accent/60"
+            aria-label={theme === "dark" ? "Switch to light" : "Switch to dark"}
+          >
+            <span className={`transition-all duration-300 ${theme === "dark" ? "rotate-0 scale-100" : "-rotate-90 scale-0 w-0 overflow-hidden"}`}>
+              <Moon className="h-3.5 w-3.5 text-blue-300" />
+            </span>
+            <span className={`transition-all duration-300 ${theme === "light" ? "rotate-0 scale-100" : "rotate-90 scale-0 w-0 overflow-hidden"}`}>
+              <Sun className="h-3.5 w-3.5 text-amber-500" />
+            </span>
+            <span className="text-foreground/80">{theme === "dark" ? "Dark" : "Light"}</span>
+          </button>
+
+          {/* Divider */}
+          <div className="w-px h-4 bg-border/40" />
+
+          {/* Language toggle */}
+          <button
+            onClick={() => setLang(lang === "vi" ? "en" : "vi")}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-200 hover:bg-accent/60"
+            aria-label={lang === "vi" ? "Switch to English" : "Chuyển sang Tiếng Việt"}
+          >
+            <span className="text-sm leading-none">{lang === "vi" ? "🇻🇳" : "🇬🇧"}</span>
+            <span className="text-foreground/80">{lang === "vi" ? "VI" : "EN"}</span>
+          </button>
+        </div>
+
+        <div className="text-right hidden sm:block">
           <p className="text-sm font-medium text-foreground">{profile?.display_name || "User"}</p>
           <p className="text-[10px] text-muted-foreground">
             {t("Số dư", "Balance")}: {((profile?.balance ?? 0) + (profile?.bonus_balance ?? 0)).toLocaleString("vi-VN")}đ
