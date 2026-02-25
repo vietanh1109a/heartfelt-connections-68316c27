@@ -1,13 +1,21 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { useAppSettings } from "@/hooks/useAppSettings";
 import { toast } from "sonner";
-import { ArrowLeft, ShoppingCart, Package, Gamepad2, Copy, Check, Shield, Zap, MessageCircle, Flame, BadgeCheck } from "lucide-react";
+import {
+  ArrowLeft, ShoppingCart, Package, Copy, Check, Shield, Zap,
+  MessageCircle, Flame, BadgeCheck, Store, Users, Search, SlidersHorizontal,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { CATEGORIES, PRODUCT_TYPES, PLATFORMS, getCategoryLabel, getTypeLabel, getPlatformLabel } from "@/lib/shopConstants";
 
 interface Product {
   id: string;
@@ -15,12 +23,16 @@ interface Product {
   description: string | null;
   note: string | null;
   category: string;
+  product_type: string;
+  platform: string | null;
   price: number;
   original_price: number | null;
   thumbnail_url: string | null;
   is_active: boolean;
   sold_count: number;
   stock_count?: number;
+  _is_ctv?: boolean;
+  _seller_name?: string;
 }
 
 function fmtVnd(amount: number) {
@@ -41,25 +53,31 @@ export default function Products({ filterCategory, embedded }: { filterCategory?
   const [purchaseResult, setPurchaseResult] = useState<{ content: string; name: string } | null>(null);
   const [copied, setCopied] = useState(false);
 
-  const { data: products = [], isLoading } = useQuery({
-    queryKey: ["products", filterCategory],
+  // Filters
+  const [shopTab, setShopTab] = useState("official");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterCat, setFilterCat] = useState("all");
+  const [filterType, setFilterType] = useState("all");
+  const [filterPlatform, setFilterPlatform] = useState("all");
+  const [sortBy, setSortBy] = useState("newest");
+
+  // ─── Fetch Official products ───
+  const { data: officialProducts = [], isLoading: loadingOfficial } = useQuery({
+    queryKey: ["products-official", filterCategory],
     queryFn: async () => {
-      // Fetch regular products
       let query = supabase
         .from("products")
         .select("*")
         .eq("is_active", true)
         .order("created_at", { ascending: false });
 
-      if (filterCategory) {
-        query = query.eq("category", filterCategory);
-      }
+      if (filterCategory) query = query.eq("category", filterCategory);
 
       const { data, error } = await query;
       if (error) throw error;
 
       const productIds = (data ?? []).map((p: any) => p.id);
-      let regularProducts: Product[] = [];
+      let stockMap: Record<string, number> = {};
       if (productIds.length > 0) {
         const { data: stockData } = await supabase
           .from("product_items")
@@ -67,34 +85,36 @@ export default function Products({ filterCategory, embedded }: { filterCategory?
           .in("product_id", productIds)
           .eq("is_sold", false);
 
-        const stockMap: Record<string, number> = {};
         (stockData ?? []).forEach((s: any) => {
           stockMap[s.product_id] = (stockMap[s.product_id] || 0) + 1;
         });
-
-        regularProducts = (data ?? []).map((p: any) => ({
-          ...p,
-          stock_count: stockMap[p.id] || 0,
-        }));
-      } else {
-        regularProducts = (data ?? []).map((p: any) => ({ ...p, stock_count: 0 }));
       }
 
-      // Fetch approved CTV listings
+      return (data ?? []).map((p: any) => ({
+        ...p,
+        product_type: p.product_type || "account",
+        platform: p.platform || null,
+        stock_count: stockMap[p.id] || 0,
+        _is_ctv: false,
+      })) as Product[];
+    },
+  });
+
+  // ─── Fetch Marketplace (CTV) products ───
+  const { data: marketplaceProducts = [], isLoading: loadingMarketplace } = useQuery({
+    queryKey: ["products-marketplace", filterCategory],
+    queryFn: async () => {
       let ctvQuery = supabase
         .from("ctv_listings")
         .select("*")
         .eq("status", "approved")
         .order("created_at", { ascending: false });
 
-      if (filterCategory) {
-        ctvQuery = ctvQuery.eq("category", filterCategory);
-      }
+      if (filterCategory) ctvQuery = ctvQuery.eq("category", filterCategory);
 
       const { data: ctvData } = await ctvQuery;
       const ctvListings = ctvData ?? [];
 
-      // Get stock for CTV listings
       const ctvIds = ctvListings.map((l: any) => l.id);
       let ctvStockMap: Record<string, number> = {};
       if (ctvIds.length > 0) {
@@ -109,13 +129,14 @@ export default function Products({ filterCategory, embedded }: { filterCategory?
         });
       }
 
-      // Map CTV listings to Product interface
-      const ctvProducts: Product[] = ctvListings.map((l: any) => ({
+      return ctvListings.map((l: any) => ({
         id: l.id,
         name: l.title,
         description: l.description,
         note: null,
         category: l.category,
+        product_type: l.product_type || "account",
+        platform: l.platform || null,
         price: l.price,
         original_price: null,
         thumbnail_url: l.thumbnail_url,
@@ -123,11 +144,59 @@ export default function Products({ filterCategory, embedded }: { filterCategory?
         sold_count: l.total_sold,
         stock_count: ctvStockMap[l.id] || 0,
         _is_ctv: true,
-      }));
-
-      return [...regularProducts, ...ctvProducts];
+      })) as Product[];
     },
   });
+
+  const isLoading = loadingOfficial || loadingMarketplace;
+
+  // ─── Filter + Sort ───
+  const currentProducts = shopTab === "official" ? officialProducts : marketplaceProducts;
+
+  const filteredProducts = useMemo(() => {
+    let result = [...currentProducts];
+
+    // Search
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter((p) =>
+        p.name.toLowerCase().includes(q) || p.description?.toLowerCase().includes(q)
+      );
+    }
+
+    // Category
+    if (filterCat !== "all") {
+      result = result.filter((p) => p.category === filterCat);
+    }
+
+    // Type
+    if (filterType !== "all") {
+      result = result.filter((p) => p.product_type === filterType);
+    }
+
+    // Platform
+    if (filterPlatform !== "all") {
+      result = result.filter((p) => p.platform === filterPlatform);
+    }
+
+    // Sort
+    switch (sortBy) {
+      case "price_asc":
+        result.sort((a, b) => a.price - b.price);
+        break;
+      case "price_desc":
+        result.sort((a, b) => b.price - a.price);
+        break;
+      case "best_selling":
+        result.sort((a, b) => b.sold_count - a.sold_count);
+        break;
+      case "newest":
+      default:
+        break; // already sorted by created_at desc
+    }
+
+    return result;
+  }, [currentProducts, searchQuery, filterCat, filterType, filterPlatform, sortBy]);
 
   const handleBuy = async (product: Product) => {
     if (!user) {
@@ -145,7 +214,8 @@ export default function Products({ filterCategory, embedded }: { filterCategory?
       }
       setPurchaseResult({ content: data.content, name: data.product_name });
       setSelectedProduct(null);
-      queryClient.invalidateQueries({ queryKey: ["products"] });
+      queryClient.invalidateQueries({ queryKey: ["products-official"] });
+      queryClient.invalidateQueries({ queryKey: ["products-marketplace"] });
       queryClient.invalidateQueries({ queryKey: ["profile"] });
       toast.success(`✅ Mua thành công! Trừ ${fmtVnd(data.amount_paid)}`);
     } finally {
@@ -160,30 +230,123 @@ export default function Products({ filterCategory, embedded }: { filterCategory?
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const isGameKeys = filterCategory === "game_key";
-  const title = isGameKeys ? "Key Game" : "Sản phẩm";
-  const icon = isGameKeys ? <Gamepad2 className="h-5 w-5 text-primary" /> : <Package className="h-5 w-5 text-primary" />;
-
   const content = (
-    <>
-      {isLoading ? (
-        <div className="text-center py-12 text-muted-foreground">Đang tải...</div>
-      ) : products.length === 0 ? (
-        <div className="text-center py-16 space-y-3">
-          <Package className="h-12 w-12 text-muted-foreground/40 mx-auto" />
-          <p className="text-muted-foreground">Chưa có sản phẩm nào</p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-          {products.map((product) => (
-            <ProductCard
-              key={product.id}
-              product={product}
-              onClick={() => setSelectedProduct(product)}
+    <div className="space-y-5">
+      {/* ─── Shop Tabs: Official vs Marketplace ─── */}
+      <Tabs value={shopTab} onValueChange={setShopTab}>
+        <TabsList className="w-full grid grid-cols-2">
+          <TabsTrigger value="official" className="gap-2">
+            <Store className="h-4 w-4" />
+            Official Shop
+            <Badge variant="secondary" className="text-[10px] px-1.5 py-0 ml-1">
+              {officialProducts.length}
+            </Badge>
+          </TabsTrigger>
+          <TabsTrigger value="marketplace" className="gap-2">
+            <Users className="h-4 w-4" />
+            Marketplace CTV
+            <Badge variant="secondary" className="text-[10px] px-1.5 py-0 ml-1">
+              {marketplaceProducts.length}
+            </Badge>
+          </TabsTrigger>
+        </TabsList>
+
+        {/* Marketplace warning */}
+        {shopTab === "marketplace" && (
+          <div className="mt-3 p-3 rounded-xl bg-yellow-500/5 border border-yellow-500/20 text-xs text-yellow-400 flex items-start gap-2">
+            <Shield className="h-4 w-4 shrink-0 mt-0.5" />
+            <span>
+              Sản phẩm do CTV (Cộng tác viên) đăng bán. Đã được duyệt bởi Admin nhưng
+              bạn nên kiểm tra kỹ trước khi mua.
+            </span>
+          </div>
+        )}
+
+        {/* ─── Filters ─── */}
+        <div className="mt-4 flex flex-col sm:flex-row gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Tìm sản phẩm..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9 h-9"
             />
-          ))}
+          </div>
+          <div className="flex gap-2 flex-wrap">
+            <Select value={filterCat} onValueChange={setFilterCat}>
+              <SelectTrigger className="w-[130px] h-9 text-xs">
+                <SelectValue placeholder="Danh mục" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tất cả</SelectItem>
+                {CATEGORIES.map((c) => (
+                  <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select value={filterType} onValueChange={setFilterType}>
+              <SelectTrigger className="w-[130px] h-9 text-xs">
+                <SelectValue placeholder="Loại" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tất cả</SelectItem>
+                {PRODUCT_TYPES.map((t) => (
+                  <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select value={filterPlatform} onValueChange={setFilterPlatform}>
+              <SelectTrigger className="w-[130px] h-9 text-xs">
+                <SelectValue placeholder="Nền tảng" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tất cả</SelectItem>
+                {PLATFORMS.map((p) => (
+                  <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select value={sortBy} onValueChange={setSortBy}>
+              <SelectTrigger className="w-[130px] h-9 text-xs">
+                <SlidersHorizontal className="h-3 w-3 mr-1" />
+                <SelectValue placeholder="Sắp xếp" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="newest">Mới nhất</SelectItem>
+                <SelectItem value="best_selling">Bán chạy</SelectItem>
+                <SelectItem value="price_asc">Giá thấp → cao</SelectItem>
+                <SelectItem value="price_desc">Giá cao → thấp</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
-      )}
+
+        {/* ─── Products Grid (shared for both tabs) ─── */}
+        <div className="mt-4">
+          {isLoading ? (
+            <div className="text-center py-12 text-muted-foreground">Đang tải...</div>
+          ) : filteredProducts.length === 0 ? (
+            <div className="text-center py-16 space-y-3">
+              <Package className="h-12 w-12 text-muted-foreground/40 mx-auto" />
+              <p className="text-muted-foreground">Không tìm thấy sản phẩm nào</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+              {filteredProducts.map((product) => (
+                <ProductCard
+                  key={product.id}
+                  product={product}
+                  onClick={() => setSelectedProduct(product)}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      </Tabs>
 
       {/* Product Detail Modal */}
       <ProductDetailModal
@@ -201,7 +364,7 @@ export default function Products({ filterCategory, embedded }: { filterCategory?
         onCopy={handleCopy}
         copied={copied}
       />
-    </>
+    </div>
   );
 
   if (embedded) {
@@ -215,8 +378,8 @@ export default function Products({ filterCategory, embedded }: { filterCategory?
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <div className="flex items-center gap-2">
-          {icon}
-          <h1 className="text-xl font-bold text-foreground">{title}</h1>
+          <ShoppingCart className="h-5 w-5 text-primary" />
+          <h1 className="text-xl font-bold text-foreground">Shop</h1>
         </div>
       </header>
       <main className="max-w-5xl mx-auto px-4 py-6">
@@ -251,15 +414,23 @@ function ProductCard({ product, onClick }: { product: Product; onClick: () => vo
             <Package className="h-10 w-10 text-muted-foreground/30" />
           </div>
         )}
-        {/* Out of stock overlay */}
         {!inStock && (
           <div className="absolute inset-0 backdrop-blur-sm bg-black/70 flex items-center justify-center">
             <span className="text-destructive font-bold text-sm">Hết hàng</span>
           </div>
         )}
-        {/* Badges row */}
         <div className="absolute top-2 left-2 right-2 flex items-start justify-between pointer-events-none">
           <div className="flex flex-col gap-1">
+            {product._is_ctv && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold text-blue-300 bg-blue-500/20 border border-blue-500/30 backdrop-blur-sm">
+                <Users className="h-2.5 w-2.5" /> CTV
+              </span>
+            )}
+            {!product._is_ctv && inStock && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold text-emerald-300 bg-emerald-500/20 border border-emerald-500/30 backdrop-blur-sm">
+                <BadgeCheck className="h-2.5 w-2.5" /> Official
+              </span>
+            )}
             {isHot(product) && inStock && (
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold text-white bg-gradient-to-r from-orange-500 to-amber-400 shadow-lg">
                 <Flame className="h-3 w-3" /> HOT
@@ -283,13 +454,28 @@ function ProductCard({ product, onClick }: { product: Product; onClick: () => vo
       <div className="p-3 space-y-2">
         <h3 className="text-sm font-semibold text-foreground line-clamp-2">{product.name}</h3>
 
+        {/* Tags */}
+        <div className="flex flex-wrap gap-1">
+          <span className="text-[9px] px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20">
+            {getCategoryLabel(product.category)}
+          </span>
+          <span className="text-[9px] px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-400 border border-purple-500/20">
+            {getTypeLabel(product.product_type)}
+          </span>
+          {product.platform && (
+            <span className="text-[9px] px-1.5 py-0.5 rounded bg-green-500/10 text-green-400 border border-green-500/20">
+              {getPlatformLabel(product.platform)}
+            </span>
+          )}
+        </div>
+
         {/* Benefits */}
         <div className="flex flex-col gap-0.5">
           <span className="text-[10px] text-muted-foreground flex items-center gap-1"><Zap className="h-2.5 w-2.5 text-amber-400" /> Giao ngay sau thanh toán</span>
           <span className="text-[10px] text-muted-foreground flex items-center gap-1"><Shield className="h-2.5 w-2.5 text-blue-400" /> Bảo hành đổi nếu lỗi</span>
         </div>
 
-        {/* Price hierarchy */}
+        {/* Price */}
         <div className="space-y-0.5 pt-1 border-t border-border/20">
           <span className="text-primary font-bold text-base block">{fmtVnd(product.price)}</span>
           {hasDiscount && (
@@ -312,7 +498,7 @@ function ProductCard({ product, onClick }: { product: Product; onClick: () => vo
           {inStock ? "Mua ngay" : "Hết hàng"}
         </Button>
 
-        {/* Trust row */}
+        {/* Trust */}
         <div className="flex items-center justify-center gap-2 text-[9px] text-muted-foreground">
           <span className="flex items-center gap-0.5"><Shield className="h-2.5 w-2.5" /> An toàn</span>
           <span className="flex items-center gap-0.5"><Zap className="h-2.5 w-2.5" /> Tức thì</span>
@@ -352,30 +538,49 @@ function ProductDetailModal({
       >
         {product && (
           <div className="flex flex-col">
-            {/* Header with image - compact 16:9 */}
             {product.thumbnail_url && (
               <div className="relative w-full aspect-[16/8] overflow-hidden bg-secondary/30">
-                <img
-                  src={product.thumbnail_url}
-                  alt={product.name}
-                  className="w-full h-full object-cover"
-                />
-                {isHot(product) && (
-                  <span className="absolute top-3 left-3 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold text-white bg-gradient-to-r from-orange-500 to-amber-400 shadow-lg">
-                    <Flame className="h-3 w-3" /> Bán chạy
-                  </span>
-                )}
+                <img src={product.thumbnail_url} alt={product.name} className="w-full h-full object-cover" />
+                <div className="absolute top-3 left-3 flex gap-1.5">
+                  {product._is_ctv ? (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold text-blue-300 bg-blue-500/20 border border-blue-500/30 backdrop-blur-sm">
+                      <Users className="h-3 w-3" /> Marketplace
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold text-emerald-300 bg-emerald-500/20 border border-emerald-500/30 backdrop-blur-sm">
+                      <BadgeCheck className="h-3 w-3" /> Official
+                    </span>
+                  )}
+                  {isHot(product) && (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold text-white bg-gradient-to-r from-orange-500 to-amber-400 shadow-lg">
+                      <Flame className="h-3 w-3" /> Bán chạy
+                    </span>
+                  )}
+                </div>
               </div>
             )}
 
-            {/* Content */}
             <div className="px-5 pt-4 pb-5 space-y-4">
-              {/* Title */}
               <DialogHeader className="p-0">
                 <DialogTitle className="text-lg font-bold text-foreground">{product.name}</DialogTitle>
               </DialogHeader>
 
-              {/* Price block */}
+              {/* Category tags */}
+              <div className="flex flex-wrap gap-1.5">
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                  {getCategoryLabel(product.category)}
+                </span>
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-400 border border-purple-500/20">
+                  {getTypeLabel(product.product_type)}
+                </span>
+                {product.platform && (
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-green-500/10 text-green-400 border border-green-500/20">
+                    {getPlatformLabel(product.platform)}
+                  </span>
+                )}
+              </div>
+
+              {/* Price */}
               <div className="space-y-1">
                 {hasDiscount && (
                   <div className="flex items-center gap-2">
@@ -388,12 +593,10 @@ function ProductDetailModal({
                 <span className="text-2xl font-bold text-primary block">{fmtVnd(product.price)}</span>
               </div>
 
-              {/* One-line summary */}
               <p className="text-xs text-muted-foreground">
                 Giao tài khoản trong 1 phút • Bảo hành {warrantyDays} ngày • Hỗ trợ 24/7
               </p>
 
-              {/* What you get */}
               <div className="bg-secondary/40 rounded-xl p-3 space-y-1.5 border border-border/30">
                 <p className="text-xs font-semibold text-foreground/90">Bạn sẽ nhận được:</p>
                 <div className="flex items-center gap-2 text-sm text-foreground/80">
@@ -414,7 +617,6 @@ function ProductDetailModal({
                 <p className="text-sm text-foreground/70 whitespace-pre-wrap">{product.description}</p>
               )}
 
-              {/* Stock urgency + CTA */}
               <div className="space-y-2 pt-1">
                 <div className="flex justify-center">
                   <span
@@ -442,7 +644,6 @@ function ProductDetailModal({
                 </Button>
               </div>
 
-              {/* Trust row */}
               <div className="flex items-center justify-center gap-4 text-[11px] text-muted-foreground">
                 <span className="flex items-center gap-1"><Shield className="h-3 w-3" /> An toàn</span>
                 <span className="flex items-center gap-1"><Zap className="h-3 w-3" /> Tức thì</span>
