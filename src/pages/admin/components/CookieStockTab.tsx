@@ -73,6 +73,7 @@ export function CookieStockTab() {
   const [checkAllRunning, setCheckAllRunning] = useState(false);
   const [checkAllProgress, setCheckAllProgress] = useState({ current: 0, total: 0 });
   const [importing, setImporting] = useState(false);
+  const [clearAllConfirm, setClearAllConfirm] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const checkingIdRef = useRef<string | null>(null);
 
@@ -218,15 +219,18 @@ export function CookieStockTab() {
     }, 60000);
   };
 
-  // === Check All ===
-  const handleCheckAll = () => {
-    if (!cookies || cookies.length === 0) return;
-    const activeCookies = cookies.filter(c => c.is_active);
-    if (activeCookies.length === 0) { toast.error("Không có cookie active"); return; }
+  // === Check All (fetch ALL active cookies, not just current page) ===
+  const handleCheckAll = async () => {
+    const { data: allActive, error } = await supabase
+      .from("cookie_stock")
+      .select("id, cookie_data")
+      .eq("is_active", true);
+    if (error) { toast.error(error.message); return; }
+    if (!allActive || allActive.length === 0) { toast.error("Không có cookie active"); return; }
 
     setCheckAllRunning(true);
-    setCheckAllProgress({ current: 0, total: activeCookies.length });
-    const cookieSets = activeCookies.map(c => ({
+    setCheckAllProgress({ current: 0, total: allActive.length });
+    const cookieSets = allActive.map(c => ({
       id: c.id,
       cookies: parseCookieString(c.cookie_data),
     }));
@@ -239,7 +243,7 @@ export function CookieStockTab() {
         if (prev) toast.error("⚠️ Batch check timeout");
         return false;
       });
-    }, activeCookies.length * 25000 + 10000);
+    }, allActive.length * 25000 + 10000);
   };
 
   // === File Upload (multiple files) ===
@@ -268,13 +272,17 @@ export function CookieStockTab() {
     }
   };
 
-  // === Export Live cookies as ZIP ===
+  // === Export Live cookies as ZIP (fetch ALL active, not just current page) ===
   const handleExportLive = async () => {
-    const liveCookies = cookies?.filter(c => c.is_active) || [];
-    if (liveCookies.length === 0) { toast.error("Không có cookie active để xuất"); return; }
+    const { data: allLive, error } = await supabase
+      .from("cookie_stock")
+      .select("cookie_data")
+      .eq("is_active", true);
+    if (error) { toast.error(error.message); return; }
+    if (!allLive || allLive.length === 0) { toast.error("Không có cookie active để xuất"); return; }
     const zip = new JSZip();
     const folder = zip.folder("live")!;
-    liveCookies.forEach((c, i) => {
+    allLive.forEach((c, i) => {
       folder.file(`cookie_${i + 1}.txt`, c.cookie_data);
     });
     const blob = await zip.generateAsync({ type: "blob" });
@@ -284,16 +292,23 @@ export function CookieStockTab() {
     a.download = `live_cookies_${new Date().toISOString().slice(0, 10)}.zip`;
     a.click();
     URL.revokeObjectURL(url);
-    toast.success(`Đã xuất ${liveCookies.length} cookie live`);
+    toast.success(`Đã xuất ${allLive.length} cookie live`);
   };
 
   // === Clear Die cookies ===
   const handleClearDie = async () => {
-    const dieCookies = cookies?.filter(c => !c.is_active) || [];
-    if (dieCookies.length === 0) { toast.error("Không có cookie die để xóa"); return; }
     const { error } = await supabase.from("cookie_stock").delete().eq("is_active", false);
     if (error) { toast.error(error.message); return; }
-    toast.success(`Đã xóa ${dieCookies.length} cookie die`);
+    toast.success("Đã xóa cookie die");
+    queryClient.invalidateQueries({ queryKey: ["admin-cookies"] });
+  };
+
+  // === Clear All cookies ===
+  const handleClearAll = async () => {
+    const { error } = await supabase.from("cookie_stock").delete().neq("id", "");
+    if (error) { toast.error(error.message); return; }
+    toast.success("Đã xóa tất cả cookie");
+    setClearAllConfirm(false);
     queryClient.invalidateQueries({ queryKey: ["admin-cookies"] });
   };
 
@@ -355,6 +370,10 @@ export function CookieStockTab() {
           <Button variant="outline" size="sm" onClick={handleClearDie} disabled={!cookies?.some(c => !c.is_active)} className="text-destructive border-destructive/30 hover:bg-destructive/10">
             <XCircle className="h-4 w-4 mr-1" />
             Clear Die
+          </Button>
+          <Button variant="destructive" size="sm" onClick={() => setClearAllConfirm(true)} disabled={totalCookies === 0}>
+            <Trash2 className="h-4 w-4 mr-1" />
+            Clear All
           </Button>
           <Button
             variant="outline"
@@ -519,6 +538,22 @@ export function CookieStockTab() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowSettings(false)}>Huỷ</Button>
             <Button onClick={() => saveExtensionId(tempExtId.trim())}>Lưu & Kết nối</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Clear All Confirm Dialog */}
+      <Dialog open={clearAllConfirm} onOpenChange={setClearAllConfirm}>
+        <DialogContent className="bg-card max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-destructive">Xóa tất cả cookie</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Bạn có chắc muốn xóa <strong>tất cả {totalCookies}</strong> cookie? Hành động không thể hoàn tác.
+          </p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setClearAllConfirm(false)}>Huỷ</Button>
+            <Button variant="destructive" onClick={handleClearAll}>Xóa tất cả</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
