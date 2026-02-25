@@ -824,6 +824,71 @@ export type Database = {
         }
         Relationships: []
       }
+      user_bans: {
+        Row: {
+          banned_by: string | null
+          created_at: string
+          expires_at: string | null
+          id: string
+          is_permanent: boolean
+          reason: string | null
+          user_id: string
+        }
+        Insert: {
+          banned_by?: string | null
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          is_permanent?: boolean
+          reason?: string | null
+          user_id: string
+        }
+        Update: {
+          banned_by?: string | null
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          is_permanent?: boolean
+          reason?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_cookie_assignment: {
+        Row: {
+          cookie_id: string | null
+          created_at: string
+          id: string
+          is_active: boolean
+          slot: number
+          user_id: string
+        }
+        Insert: {
+          cookie_id?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          slot?: number
+          user_id: string
+        }
+        Update: {
+          cookie_id?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          slot?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_cookie_assignment_cookie_id_fkey"
+            columns: ["cookie_id"]
+            isOneToOne: false
+            referencedRelation: "cookie_stock"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           id: string
@@ -874,6 +939,38 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      vip_purchases: {
+        Row: {
+          amount_paid: number
+          created_at: string
+          id: string
+          plan_id: string | null
+          user_id: string
+        }
+        Insert: {
+          amount_paid?: number
+          created_at?: string
+          id?: string
+          plan_id?: string | null
+          user_id: string
+        }
+        Update: {
+          amount_paid?: number
+          created_at?: string
+          id?: string
+          plan_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vip_purchases_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "vip_plans"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {

@@ -24,7 +24,7 @@ export function StatsTab() {
         supabase.from("profiles").select("*", { count: "exact", head: true }),
         supabase.from("profiles").select("*", { count: "exact", head: true }).gte("created_at", today.toISOString()),
         supabase.from("profiles").select("*", { count: "exact", head: true }).gt("vip_expires_at", now.toISOString()),
-        supabase.from("transactions").select("amount, type, created_at, memo").order("created_at", { ascending: false }).limit(500),
+        supabase.from("transactions").select("amount, type, created_at, description").order("created_at", { ascending: false }).limit(500),
         supabase.from("cookie_stock").select("*", { count: "exact", head: true }),
         supabase.from("cookie_stock").select("*", { count: "exact", head: true }).eq("is_active", true),
         supabase.from("vip_purchases").select("amount_paid, created_at"),
@@ -32,7 +32,7 @@ export function StatsTab() {
 
       const totalRevenue = transactions?.filter(t => t.type === "deposit").reduce((sum, t) => sum + (t.amount ?? 0), 0) ?? 0;
       const revenueToday = transactions?.filter(t => t.type === "deposit" && new Date(t.created_at) >= today).reduce((sum, t) => sum + (t.amount ?? 0), 0) ?? 0;
-      const usageToday = transactions?.filter(t => t.type === "usage" && new Date(t.created_at) >= today).length ?? 0;
+      const usageToday = transactions?.filter(t => t.type === "purchase" && new Date(t.created_at) >= today).length ?? 0;
 
       const dieCookies = (totalCookies ?? 0) - (liveCookies ?? 0);
 
@@ -101,7 +101,7 @@ export function StatsTab() {
                 <span className={`text-xs px-2 py-0.5 rounded-full ${t.type === "deposit" ? "bg-green-500/20 text-green-400" : "bg-orange-500/20 text-orange-400"}`}>
                   {t.type === "deposit" ? "Nạp" : "Dùng"}
                 </span>
-                <span className="text-xs text-muted-foreground truncate max-w-[200px]">{t.memo || "—"}</span>
+                <span className="text-xs text-muted-foreground truncate max-w-[200px]">{t.description || "—"}</span>
               </div>
               <div className="text-right shrink-0">
                 <span className={`text-sm font-bold ${t.type === "deposit" ? "text-green-400" : "text-orange-400"}`}>

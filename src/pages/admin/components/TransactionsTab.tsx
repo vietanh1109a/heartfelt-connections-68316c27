@@ -78,7 +78,7 @@ export function TransactionsTab() {
                 <TableCell className={`text-right font-bold ${t.type === "deposit" ? "text-green-400" : "text-orange-400"}`}>
                   {t.type === "deposit" ? "+" : "-"}{(t.amount ?? 0).toLocaleString("vi-VN")}đ
                 </TableCell>
-                <TableCell className="text-sm text-muted-foreground max-w-xs truncate">{t.memo || "—"}</TableCell>
+                <TableCell className="text-sm text-muted-foreground max-w-xs truncate">{t.description || "—"}</TableCell>
                 <TableCell className="text-sm text-muted-foreground">
                   {new Date(t.created_at).toLocaleString("vi-VN")}
                 </TableCell>

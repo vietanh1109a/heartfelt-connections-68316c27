@@ -47,7 +47,7 @@ export const CTVOverview = ({ profile }: Props) => {
       const since = subDays(new Date(), 6).toISOString();
       const { data } = await supabase
         .from("ctv_orders")
-        .select("ctv_earning, created_at, status")
+        .select("commission, created_at, status")
         .eq("ctv_user_id", profile.user_id)
         .gte("created_at", since);
       const map: Record<string, { date: string; revenue: number; orders: number }> = {};
@@ -58,7 +58,7 @@ export const CTVOverview = ({ profile }: Props) => {
       (data ?? []).forEach((o) => {
         if (o.status === "refunded") return;
         const d = format(new Date(o.created_at), "dd/MM");
-        if (map[d]) { map[d].revenue += o.ctv_earning; map[d].orders += 1; }
+        if (map[d]) { map[d].revenue += o.commission; map[d].orders += 1; }
       });
       return Object.values(map);
     },

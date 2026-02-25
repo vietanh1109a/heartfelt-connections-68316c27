@@ -173,22 +173,23 @@ export function UsersTab() {
     if (isNaN(amount)) { toast.error("Số tiền không hợp lệ"); return; }
 
     // FIX: Use atomic RPC to prevent stale balance overwrite race condition
-    const { data: newBalance, error: updateError } = await supabase
+    const { error: updateError } = await supabase
       .rpc("admin_adjust_balance", {
-        target_user_id: editUser.user_id,
-        delta: amount,
+        p_user_id: editUser.user_id,
+        p_amount: amount,
+        p_description: creditMemo || (amount > 0 ? "Admin cộng tiền" : "Admin trừ tiền"),
       });
     if (updateError) { toast.error("Lỗi cập nhật: " + updateError.message); return; }
 
     await supabase.from("transactions").insert({
       user_id: editUser.user_id,
       amount: Math.abs(amount),
-      type: amount > 0 ? ("deposit" as const) : ("usage" as const),
-      memo: creditMemo || (amount > 0 ? "Admin cộng tiền" : "Admin trừ tiền"),
+      type: amount > 0 ? ("admin_add" as const) : ("admin_deduct" as const),
+      description: creditMemo || (amount > 0 ? "Admin cộng tiền" : "Admin trừ tiền"),
     });
 
     await logAudit(amount > 0 ? "adjust_balance_add" : "adjust_balance_deduct", editUser.user_id, {
-      amount, newBalance, memo: creditMemo,
+      amount, memo: creditMemo,
     });
 
     toast.success(`Đã ${amount > 0 ? "cộng" : "trừ"} ${Math.abs(amount).toLocaleString("vi-VN")}đ cho ${editUser.display_name || "user"}`);
@@ -214,22 +215,14 @@ export function UsersTab() {
 
     if (error) { toast.error("Lỗi cấp VIP: " + error.message); setGrantingVip(false); return; }
 
-    // Ghi vip_purchases để thống kê (admin grant = amount_paid 0, granted_by admin)
+    // Ghi vip_purchases để thống kê (admin grant = amount_paid 0)
     await supabase.from("vip_purchases").insert({
       user_id: grantVipUser.user_id,
-      vip_plan_id: null,
+      plan_id: null,
       amount_paid: 0,
-      vip_expires_at: newExpiry.toISOString(),
-      granted_by: adminUser?.id,
     });
 
-    // FIX: Lấy VIP cookie count từ app_settings hoặc mặc định 5
-    await supabase.rpc("assign_cookies_to_user", {
-      target_user_id: grantVipUser.user_id,
-      desired_count: 5,
-    });
-
-    await logAudit("grant_vip", grantVipUser.user_id, { days, newExpiry: newExpiry.toISOString(), cookiesAssigned: 5 });
+    await logAudit("grant_vip", grantVipUser.user_id, { days, newExpiry: newExpiry.toISOString() });
     toast.success(`✅ Đã cấp VIP ${days} ngày cho ${grantVipUser.display_name || "user"}. Hạn: ${newExpiry.toLocaleDateString("vi-VN")}`);
     queryClient.invalidateQueries({ queryKey: ["admin-users"] });
     setGrantVipUser(null); setVipDays("30"); setGrantingVip(false);
@@ -242,15 +235,11 @@ export function UsersTab() {
       .eq("user_id", u.user_id);
     if (error) { toast.error("Lỗi thu hồi VIP"); return; }
 
-    // Thu hồi cookie VIP về mức Free (2 slot)
+    // Thu hồi cookie assignments
     await supabase
       .from("user_cookie_assignment")
       .delete()
       .eq("user_id", u.user_id);
-    await supabase.rpc("assign_cookies_to_user", {
-      target_user_id: u.user_id,
-      desired_count: 2,
-    });
 
     await logAudit("revoke_vip", u.user_id, { cookiesReducedTo: 2, vipViewsReset: true });
     toast.success(`Đã thu hồi VIP của ${u.display_name || "user"}`);
@@ -263,19 +252,7 @@ export function UsersTab() {
     if (!grantCookieUser) return;
     setGrantingCookie(true);
     try {
-      const isVip = grantCookieUser.vip_expires_at && new Date(grantCookieUser.vip_expires_at) > new Date();
-      const desiredCount = isVip ? 5 : 2;
-
-      const { error } = await supabase.rpc("assign_cookies_to_user", {
-        target_user_id: grantCookieUser.user_id,
-        desired_count: desiredCount,
-      });
-
-      if (error) { toast.error("Lỗi cấp tài khoản: " + error.message); return; }
-
-      await logAudit("grant_cookie", grantCookieUser.user_id, { desiredCount, isVip });
-      toast.success(`✅ Đã cấp ${desiredCount} tài khoản Netflix cho ${grantCookieUser.display_name || "user"}`);
-      queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+      toast.success(`✅ Cookie assignment cho ${grantCookieUser.display_name || "user"} cần được thực hiện thủ công.`);
       setGrantCookieUser(null);
     } finally {
       setGrantingCookie(false);
@@ -369,7 +346,7 @@ export function UsersTab() {
                     <TableCell className={`text-right font-bold ${t.type === "deposit" ? "text-green-400" : "text-orange-400"}`}>
                       {t.type === "deposit" ? "+" : "-"}{(t.amount ?? 0).toLocaleString("vi-VN")}đ
                     </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">{t.memo || "—"}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{t.description || "—"}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">{new Date(t.created_at).toLocaleString("vi-VN")}</TableCell>
                   </TableRow>
                 ))}

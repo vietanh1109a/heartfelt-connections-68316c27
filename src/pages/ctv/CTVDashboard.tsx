@@ -74,13 +74,13 @@ const CTVDashboard = () => {
 
   const renderContent = () => {
     switch (activeTab) {
-      case "overview": return <CTVOverview profile={ctvProfile} />;
+      case "overview": return <CTVOverview profile={ctvProfile as any} />;
       case "listings": return <CTVListings userId={user.id} onAddNew={() => setActiveTab("add-listing")} />;
       case "add-listing": return <CTVAddListing userId={user.id} onSuccess={() => setActiveTab("listings")} />;
       case "orders": return <CTVOrders userId={user.id} />;
       case "revenue": return <CTVRevenue userId={user.id} />;
-      case "withdraw": return <CTVWithdraw profile={ctvProfile} onSuccess={refetchProfile} />;
-      case "settings": return <CTVSettings profile={ctvProfile} onSuccess={refetchProfile} />;
+      case "withdraw": return <CTVWithdraw profile={ctvProfile as any} onSuccess={refetchProfile} />;
+      case "settings": return <CTVSettings profile={ctvProfile as any} onSuccess={refetchProfile} />;
       default: return null;
     }
   };
@@ -129,11 +129,11 @@ const CTVDashboard = () => {
         <div className="border-t border-border/50 px-3 py-3">
           <div className="flex items-center justify-between text-xs text-muted-foreground px-1">
             <span>Khả dụng</span>
-            <span className="text-primary font-bold">{(ctvProfile.available_balance ?? 0).toLocaleString("vi-VN")}đ</span>
+            <span className="text-primary font-bold">{(ctvProfile.balance ?? 0).toLocaleString("vi-VN")}đ</span>
           </div>
           <div className="flex items-center justify-between text-xs text-muted-foreground px-1 mt-1">
             <span>Chờ duyệt</span>
-            <span className="text-yellow-400 font-bold">{(ctvProfile.pending_balance ?? 0).toLocaleString("vi-VN")}đ</span>
+            <span className="text-yellow-400 font-bold">0đ</span>
           </div>
           <a
             href="https://t.me/vietsix"

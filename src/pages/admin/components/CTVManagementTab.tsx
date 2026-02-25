@@ -109,8 +109,8 @@ export const CTVManagementTab = () => {
   const stats = {
     pending: ctvProfiles?.filter(c => c.status === "pending").length ?? 0,
     approved: ctvProfiles?.filter(c => c.status === "approved").length ?? 0,
-    totalOrders: ctvProfiles?.reduce((sum, c) => sum + (c.total_orders ?? 0), 0) ?? 0,
-    totalCommission: ctvProfiles?.reduce((sum, c) => sum + (c.available_balance ?? 0) + (c.pending_balance ?? 0), 0) ?? 0,
+    totalOrders: 0,
+    totalCommission: ctvProfiles?.reduce((sum, c) => sum + (c.balance ?? 0), 0) ?? 0,
   };
 
   // Filter & search
@@ -122,7 +122,7 @@ export const CTVManagementTab = () => {
       return (
         c.display_name?.toLowerCase().includes(q) ||
         c.user_id?.toLowerCase().includes(q) ||
-        c.contact_info?.toLowerCase().includes(q)
+        c.phone?.toLowerCase().includes(q)
       );
     })
     // Pending first, then by created_at desc
@@ -355,7 +355,7 @@ export const CTVManagementTab = () => {
             <TableBody>
               {filtered.map(ctv => {
                 const st = statusConfig[ctv.status] ?? statusConfig.pending;
-                const totalCommission = (ctv.available_balance ?? 0) + (ctv.pending_balance ?? 0);
+                const totalCommission = ctv.balance ?? 0;
                 return (
                   <TableRow key={ctv.id} className={ctv.status === "pending" ? "bg-yellow-500/5" : ""}>
                     <TableCell>
@@ -368,8 +368,8 @@ export const CTVManagementTab = () => {
                       <Badge variant={st.variant} className="text-xs">{st.label}</Badge>
                     </TableCell>
                     <TableCell className="text-center font-semibold text-sm">{ctv.commission_rate}%</TableCell>
-                    <TableCell className="text-right text-sm">{ctv.total_orders}</TableCell>
-                    <TableCell className="text-right text-sm">{formatCurrency(ctv.total_sales)}</TableCell>
+                    <TableCell className="text-right text-sm">{(ctv as any).total_sold ?? 0}</TableCell>
+                    <TableCell className="text-right text-sm">{formatCurrency(ctv.total_earned ?? 0)}</TableCell>
                     <TableCell className="text-right text-sm">{formatCurrency(totalCommission)}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">
                       {format(new Date(ctv.created_at), "dd/MM/yy")}
@@ -515,8 +515,8 @@ export const CTVManagementTab = () => {
                       <div key={o.id} className="flex items-center justify-between text-xs bg-secondary/30 rounded-lg px-3 py-2">
                         <span className="text-foreground font-mono">{o.id.slice(0, 8)}</span>
                         <div className="flex items-center gap-2">
-                          <span className="text-foreground">{formatCurrency(o.price)}</span>
-                          <span className="text-primary">{formatCurrency(o.ctv_earning)}</span>
+                          <span className="text-foreground">{formatCurrency(o.amount)}</span>
+                          <span className="text-primary">{formatCurrency(o.commission)}</span>
                           <Badge variant={o.status === "completed" ? "default" : o.status === "refunded" ? "destructive" : "secondary"} className="text-[10px]">
                             {o.status}
                           </Badge>

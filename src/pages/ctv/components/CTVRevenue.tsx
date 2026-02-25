@@ -16,7 +16,7 @@ export const CTVRevenue = ({ userId }: Props) => {
     queryFn: async () => {
       const { data } = await supabase
         .from("ctv_orders")
-        .select("ctv_earning, created_at, status")
+        .select("commission, created_at, status")
         .eq("ctv_user_id", userId)
         .order("created_at", { ascending: true });
       return data ?? [];
@@ -34,10 +34,10 @@ export const CTVRevenue = ({ userId }: Props) => {
     let today = 0, week = 0, month = 0, all = 0;
     validOrders.forEach(o => {
       const date = new Date(o.created_at);
-      all += o.ctv_earning;
-      if (isAfter(date, todayStart)) today += o.ctv_earning;
-      if (isAfter(date, d7)) week += o.ctv_earning;
-      if (isAfter(date, d30)) month += o.ctv_earning;
+      all += o.commission;
+      if (isAfter(date, todayStart)) today += o.commission;
+      if (isAfter(date, d7)) week += o.commission;
+      if (isAfter(date, d30)) month += o.commission;
     });
 
     // Growth calc (last 7 vs previous 7)
@@ -45,8 +45,8 @@ export const CTVRevenue = ({ userId }: Props) => {
     let thisWeek = 0, lastWeek = 0;
     validOrders.forEach(o => {
       const date = new Date(o.created_at);
-      if (isAfter(date, d7)) thisWeek += o.ctv_earning;
-      else if (isAfter(date, d14)) lastWeek += o.ctv_earning;
+      if (isAfter(date, d7)) thisWeek += o.commission;
+      else if (isAfter(date, d14)) lastWeek += o.commission;
     });
     const growth = lastWeek > 0 ? ((thisWeek - lastWeek) / lastWeek * 100).toFixed(1) : thisWeek > 0 ? "100" : "0";
 
@@ -62,7 +62,7 @@ export const CTVRevenue = ({ userId }: Props) => {
     }
     validOrders.forEach(o => {
       const d = format(new Date(o.created_at), "dd/MM");
-      if (map[d]) map[d].revenue += o.ctv_earning;
+      if (map[d]) map[d].revenue += o.commission;
     });
     return Object.values(map);
   }, [validOrders]);
