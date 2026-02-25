@@ -25,7 +25,6 @@ const AdminDashboard = () => {
   const { isModerator, canViewTab, isAdmin: isSuperAdmin } = useRolePermissions();
   const navigate = useNavigate();
 
-  // Count pending cookie reports for badge
   const { data: pendingReportsCount } = useQuery({
     queryKey: ["pending-reports-count"],
     queryFn: async () => {
@@ -43,7 +42,10 @@ const AdminDashboard = () => {
   if (adminLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="animate-pulse text-primary text-xl">Đang kiểm tra quyền...</div>
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+          <p className="text-sm text-muted-foreground">Đang kiểm tra quyền...</p>
+        </div>
       </div>
     );
   }
@@ -59,7 +61,6 @@ const AdminDashboard = () => {
     );
   }
 
-  // Tabs definition with their access key
   const tabs = [
     { value: "stats", label: "Thống kê", icon: <BarChart2 className="h-4 w-4" />, content: <StatsTab /> },
     { value: "users", label: "Users", icon: <Users className="h-4 w-4" />, content: <UsersTab /> },
@@ -86,7 +87,6 @@ const AdminDashboard = () => {
     { value: "products", label: "Sản phẩm", icon: <Package className="h-4 w-4" />, content: <ProductsTab /> },
     { value: "ctv-listings", label: "SP CTV", icon: <UserPlus className="h-4 w-4" />, content: <CTVListingsTab /> },
     { value: "ctv-management", label: "Cộng tác viên", icon: <Handshake className="h-4 w-4" />, content: <CTVManagementTab /> },
-    // Only super admin can manage moderators and settings
     ...(isSuperAdmin ? [
       { value: "moderators", label: "Moderators", icon: <UserCheck className="h-4 w-4" />, content: <ModeratorsTab /> },
       { value: "settings", label: "Cài đặt", icon: <Settings className="h-4 w-4" />, content: <SettingsTab /> },
@@ -97,28 +97,35 @@ const AdminDashboard = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="flex items-center justify-between px-6 py-4 border-b border-border/50 bg-card">
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => navigate("/")}>
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <h1 className="text-xl font-bold text-foreground flex items-center gap-2">
-            <Shield className="h-5 w-5 text-primary" />
-            {isSuperAdmin ? "Super Admin Dashboard" : "Moderator Dashboard"}
-          </h1>
+      {/* Hero header with gradient */}
+      <header className="relative border-b border-border/20 overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,hsl(357_92%_47%_/_0.06),transparent_60%)]" />
+        <div className="relative flex items-center justify-between px-6 py-4">
+          <div className="flex items-center gap-3">
+            <Button variant="ghost" size="icon" onClick={() => navigate("/")} className="hover:bg-accent/50">
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <div>
+              <h1 className="text-lg font-bold text-foreground flex items-center gap-2">
+                <Shield className="h-4 w-4 text-primary" />
+                {isSuperAdmin ? "Admin Dashboard" : "Moderator Dashboard"}
+              </h1>
+              <p className="text-[11px] text-muted-foreground">Quản lý hệ thống</p>
+            </div>
+          </div>
+          {isModerator && !isSuperAdmin && (
+            <span className="text-xs px-3 py-1 rounded-full bg-primary/10 text-primary border border-primary/20 font-medium">
+              Moderator
+            </span>
+          )}
         </div>
-        {isModerator && !isSuperAdmin && (
-          <span className="text-xs px-3 py-1 rounded-full bg-primary/10 text-primary border border-primary/20 font-medium">
-            Moderator
-          </span>
-        )}
       </header>
 
-      <div className="max-w-6xl mx-auto p-6">
+      <div className="max-w-[1280px] mx-auto p-4 md:p-6">
         <Tabs defaultValue={defaultTab}>
-          <TabsList className="mb-6 flex-wrap">
+          <TabsList className="mb-5 flex-wrap bg-card/50 border border-border/20 p-1 rounded-xl">
             {tabs.map(tab => (
-              <TabsTrigger key={tab.value} value={tab.value} className="gap-2">
+              <TabsTrigger key={tab.value} value={tab.value} className="gap-1.5 rounded-lg text-xs data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-none">
                 {tab.icon} {tab.label}
               </TabsTrigger>
             ))}

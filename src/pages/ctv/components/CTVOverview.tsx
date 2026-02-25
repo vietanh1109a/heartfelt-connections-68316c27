@@ -2,11 +2,13 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import { format, subDays } from "date-fns";
 import {
-  DollarSign, Wallet, Package, TrendingUp,
-  Lightbulb, Bell, CheckCircle, AlertTriangle, Star, Rocket,
+  DollarSign, Wallet, Package, TrendingUp, ArrowUpRight, ArrowDownRight,
+  Lightbulb, Bell, CheckCircle, AlertTriangle, Star, Rocket, Target,
+  Zap, Award,
 } from "lucide-react";
 
 interface Props {
@@ -21,9 +23,16 @@ interface Props {
   };
 }
 
+function getCTVLevel(totalEarned: number) {
+  if (totalEarned >= 5000000) return { name: "Gold", color: "text-yellow-400", icon: "🏆" };
+  if (totalEarned >= 1000000) return { name: "Silver", color: "text-slate-300", icon: "🥈" };
+  return { name: "Bronze", color: "text-orange-400", icon: "🥉" };
+}
+
 export const CTVOverview = ({ profile }: Props) => {
   const totalSales = profile.total_earned ?? 0;
   const availableBalance = profile.balance ?? 0;
+  const level = getCTVLevel(totalSales);
 
   const { data: orderStats } = useQuery({
     queryKey: ["ctv-order-stats", profile.user_id],
@@ -107,11 +116,15 @@ export const CTVOverview = ({ profile }: Props) => {
     },
   });
 
+  // Monthly goal (5M default)
+  const monthlyGoal = 5000000;
+  const goalPct = Math.min(Math.round((totalSales / monthlyGoal) * 100), 100);
+
   const mainStats = [
-    { label: "Doanh thu", value: `${totalSales.toLocaleString("vi-VN")}đ`, icon: DollarSign, color: "text-primary" },
-    { label: "Khả dụng", value: `${availableBalance.toLocaleString("vi-VN")}đ`, icon: Wallet, color: "text-green-400" },
-    { label: "Đang bán", value: `${listingStats?.active ?? 0}`, icon: Package, color: "text-blue-400" },
-    { label: "Tỉ lệ TC", value: `${successRate}%`, icon: TrendingUp, color: parseFloat(successRate) >= 90 ? "text-green-400" : "text-primary" },
+    { label: "Doanh thu", value: `${totalSales.toLocaleString("vi-VN")}đ`, icon: DollarSign, color: "text-primary", trend: "+0%", trendUp: true },
+    { label: "Khả dụng", value: `${availableBalance.toLocaleString("vi-VN")}đ`, icon: Wallet, color: "text-green-400", trend: null, trendUp: true },
+    { label: "Đang bán", value: `${listingStats?.active ?? 0}`, icon: Package, color: "text-blue-400", trend: null, trendUp: true },
+    { label: "Tỉ lệ TC", value: `${successRate}%`, icon: TrendingUp, color: parseFloat(successRate) >= 90 ? "text-green-400" : "text-primary", trend: null, trendUp: parseFloat(successRate) >= 50 },
   ];
 
   const activityIcon = (status: string) => {
@@ -121,22 +134,48 @@ export const CTVOverview = ({ profile }: Props) => {
 
   return (
     <div className="space-y-5">
+      {/* Hero Section */}
+      <div className="relative rounded-2xl overflow-hidden border border-border/20" style={{ background: "linear-gradient(135deg, hsl(240 6% 10%), hsl(357 92% 47% / 0.06), hsl(240 6% 10%))" }}>
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,hsl(357_92%_47%_/_0.08),transparent_60%)]" />
+        <div className="relative p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <h2 className="text-lg font-bold text-foreground">
+              Xin chào, {profile.display_name ?? "CTV"} 👋
+            </h2>
+            <p className="text-sm text-muted-foreground">Sẵn sàng kiếm tiền hôm nay?</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="text-right">
+              <div className="flex items-center gap-1.5 justify-end">
+                <Award className={`h-4 w-4 ${level.color}`} />
+                <span className={`text-sm font-bold ${level.color}`}>{level.icon} {level.name}</span>
+              </div>
+              <p className="text-[10px] text-muted-foreground">Hoa hồng: {profile.commission_rate ?? 10}%</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* 4 KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {mainStats.map((s, i) => {
           const Icon = s.icon;
           return (
-            <Card key={i} className="ctv-card ctv-card-hover">
+            <Card key={i} className="ctv-card ctv-card-hover group">
               <CardContent className="p-4">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-xl bg-accent">
+                <div className="flex items-start justify-between mb-2">
+                  <div className="p-2 rounded-xl bg-accent/60 group-hover:bg-accent transition-colors">
                     <Icon className={`h-4 w-4 ${s.color}`} />
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">{s.label}</p>
-                    <p className={`ctv-stat-value ${s.color}`}>{s.value}</p>
-                  </div>
+                  {s.trend && (
+                    <span className={`flex items-center gap-0.5 text-[10px] font-medium ${s.trendUp ? "text-green-400" : "text-destructive"}`}>
+                      {s.trendUp ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
+                      {s.trend}
+                    </span>
+                  )}
                 </div>
+                <p className={`text-xl font-bold ${s.color} mb-0.5`}>{s.value}</p>
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">{s.label}</p>
               </CardContent>
             </Card>
           );
@@ -153,16 +192,16 @@ export const CTVOverview = ({ profile }: Props) => {
                   <TrendingUp className="h-3.5 w-3.5" /> Doanh thu 7 ngày
                 </h3>
               </div>
-              <div className="h-[240px]">
+              <div className="h-[220px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={chartData ?? []}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.5} />
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
                     <XAxis dataKey="date" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
                     <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
                     <Tooltip
                       contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 12, fontSize: 12, boxShadow: "0 8px 30px rgba(0,0,0,0.3)" }}
                       formatter={(v: number) => [`${v.toLocaleString("vi-VN")}đ`, "Doanh thu"]}
-                      cursor={{ fill: "hsl(var(--accent))", opacity: 0.5 }}
+                      cursor={{ fill: "hsl(var(--accent))", opacity: 0.3 }}
                     />
                     <Bar dataKey="revenue" fill="hsl(var(--primary))" radius={[6, 6, 0, 0]} />
                   </BarChart>
@@ -176,11 +215,11 @@ export const CTVOverview = ({ profile }: Props) => {
             <Card className="ctv-card">
               <CardContent className="p-4">
                 <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2 mb-3">
-                  <Star className="h-3.5 w-3.5" /> Top sản phẩm
+                  <Star className="h-3.5 w-3.5 text-yellow-400" /> Sản phẩm bán chạy tuần này
                 </h3>
-                <div className="divide-y divide-border/30">
+                <div className="divide-y divide-border/20">
                   {topProducts.map((p, i) => (
-                    <div key={p.id} className="flex items-center gap-3 py-2.5">
+                    <div key={p.id} className="flex items-center gap-3 py-2.5 hover:bg-accent/20 transition-colors rounded-lg px-1">
                       <span className="text-[10px] font-bold text-muted-foreground w-5">#{i + 1}</span>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-foreground truncate">{p.title}</p>
@@ -197,8 +236,26 @@ export const CTVOverview = ({ profile }: Props) => {
 
         {/* Sidebar 30% */}
         <div className="lg:col-span-3 space-y-3">
-          <Card className="ctv-card">
+          {/* Monthly Goal */}
+          <Card className="ctv-card border-primary/10">
             <CardContent className="p-4 space-y-3">
+              <h3 className="text-xs font-semibold text-foreground flex items-center gap-2">
+                <Target className="h-3.5 w-3.5 text-primary" /> Mục tiêu tháng
+              </h3>
+              <p className="text-xl font-bold text-primary">{totalSales.toLocaleString("vi-VN")}đ</p>
+              <div className="space-y-1">
+                <div className="flex justify-between text-[10px]">
+                  <span className="text-muted-foreground">/ {(monthlyGoal / 1000000).toFixed(0)}M</span>
+                  <span className="text-primary font-bold">{goalPct}%</span>
+                </div>
+                <Progress value={goalPct} className="h-1.5" />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Ví CTV */}
+          <Card className="ctv-card">
+            <CardContent className="p-4 space-y-2.5">
               <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
                 <Wallet className="h-3.5 w-3.5" /> Ví CTV
               </h3>
@@ -215,15 +272,16 @@ export const CTVOverview = ({ profile }: Props) => {
             </CardContent>
           </Card>
 
+          {/* Phí nền tảng */}
           <Card className="ctv-card">
             <CardContent className="p-4 space-y-2">
               <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Phí nền tảng</h3>
               {[
-                { range: "< 100k", fee: "10%", active: false },
-                { range: "100k–300k", fee: "7%", active: false },
-                { range: "> 300k", fee: "5%", active: false },
+                { range: "< 100k", fee: "10%" },
+                { range: "100k–300k", fee: "7%" },
+                { range: "> 300k", fee: "5%" },
               ].map((r, i) => (
-                <div key={i} className="flex justify-between py-1.5 text-sm">
+                <div key={i} className="flex justify-between py-1 text-sm">
                   <span className="text-muted-foreground">{r.range}</span>
                   <span className="text-primary font-semibold">{r.fee}</span>
                 </div>
@@ -231,20 +289,22 @@ export const CTVOverview = ({ profile }: Props) => {
             </CardContent>
           </Card>
 
-          <Card className="ctv-card bg-accent/30">
+          {/* Tips - glass style */}
+          <Card className="ctv-card">
             <CardContent className="p-4">
-              <h3 className="text-xs font-semibold text-foreground flex items-center gap-1.5 mb-2">
-                <Lightbulb className="h-3.5 w-3.5 text-yellow-400" /> Tips
+              <h3 className="text-xs font-semibold text-foreground flex items-center gap-1.5 mb-2.5">
+                <Lightbulb className="h-3.5 w-3.5 text-yellow-400" /> Tips kiếm tiền
               </h3>
-              <ul className="space-y-1.5">
+              <ul className="space-y-2">
                 {[
-                  "Giá cạnh tranh so với thị trường",
-                  "Mô tả rõ ràng, ảnh minh họa đẹp",
-                  "Bảo hành dài → bán nhanh hơn",
-                  "Giảm tỉ lệ hoàn < 5%",
+                  { icon: Zap, text: "Giá cạnh tranh → bán nhanh hơn" },
+                  { icon: Star, text: "Mô tả rõ ràng, ảnh đẹp" },
+                  { icon: TrendingUp, text: "Bảo hành dài → tin tưởng cao" },
+                  { icon: Target, text: "Giảm hoàn < 5% → level up" },
                 ].map((t, i) => (
-                  <li key={i} className="text-[11px] text-muted-foreground flex items-start gap-1.5">
-                    <span className="text-yellow-400 mt-0.5 text-[8px]">●</span>{t}
+                  <li key={i} className="text-[11px] text-muted-foreground flex items-center gap-2">
+                    <t.icon className="h-3 w-3 text-muted-foreground/60 shrink-0" />
+                    {t.text}
                   </li>
                 ))}
               </ul>
@@ -260,23 +320,31 @@ export const CTVOverview = ({ profile }: Props) => {
             <Bell className="h-3.5 w-3.5" /> Hoạt động gần đây
           </h3>
           {(!recentOrders || recentOrders.length === 0) ? (
-            <div className="py-10 flex flex-col items-center gap-3 text-center">
-              <div className="p-3 rounded-2xl bg-primary/10">
-                <Rocket className="h-8 w-8 text-primary" />
+            <div className="py-8 flex flex-col items-center gap-3 text-center">
+              <div className="relative">
+                <div className="p-4 rounded-2xl bg-primary/5 border border-primary/10">
+                  <Rocket className="h-8 w-8 text-primary" />
+                </div>
+                <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-primary/20 animate-ping" />
               </div>
-              <div className="space-y-1">
-                <p className="text-sm font-medium text-foreground">Chưa có hoạt động</p>
-                <p className="text-xs text-muted-foreground">Tạo sản phẩm đầu tiên để bắt đầu kiếm tiền!</p>
+              <div className="space-y-1.5 max-w-xs">
+                <p className="text-base font-bold text-foreground">🔥 Bắt đầu kiếm tiền ngay!</p>
+                <p className="text-xs text-muted-foreground">Tạo sản phẩm → Chia sẻ link → Nhận hoa hồng</p>
               </div>
-              <Button size="sm" className="ctv-glow-btn mt-1">
-                <Package className="h-3.5 w-3.5 mr-1.5" /> Tạo sản phẩm
-              </Button>
+              <div className="flex gap-2">
+                <Button size="sm" className="ctv-glow-btn rounded-xl">
+                  <Package className="h-3.5 w-3.5 mr-1.5" /> Tạo sản phẩm
+                </Button>
+                <Button variant="outline" size="sm" className="rounded-xl text-xs">
+                  Xem hướng dẫn
+                </Button>
+              </div>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-border/30 text-[10px] text-muted-foreground uppercase tracking-wider">
+                  <tr className="border-b border-border/20 text-[10px] text-muted-foreground uppercase tracking-wider">
                     <th className="text-left py-2 font-medium">Sản phẩm</th>
                     <th className="text-right py-2 font-medium">Giá</th>
                     <th className="text-right py-2 font-medium">Hoa hồng</th>
@@ -284,9 +352,9 @@ export const CTVOverview = ({ profile }: Props) => {
                     <th className="text-right py-2 font-medium">Thời gian</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-border/20">
+                <tbody className="divide-y divide-border/10">
                   {recentOrders.map((o: any) => (
-                    <tr key={o.id} className="hover:bg-accent/30 transition-colors">
+                    <tr key={o.id} className="hover:bg-accent/20 transition-colors">
                       <td className="py-2.5 text-foreground text-xs font-medium truncate max-w-[160px]">
                         {o.ctv_listings?.title ?? "Sản phẩm"}
                       </td>

@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { PlusCircle, Package, Search, Eye, Edit, ImageIcon, Rocket, ArrowRight, BookOpen } from "lucide-react";
+import { PlusCircle, Package, Search, Eye, Edit, ImageIcon, Rocket, ArrowRight, BookOpen, Zap } from "lucide-react";
 
 const statusConfig: Record<string, { label: string; className: string }> = {
   pending_review: { label: "Chờ duyệt", className: "bg-yellow-500/10 text-yellow-400 border-yellow-500/20" },
@@ -68,10 +68,10 @@ export const CTVListings = ({ userId, onAddNew }: Props) => {
       {/* Mini Stats */}
       <div className="grid grid-cols-4 gap-2">
         {miniStats.map((s, i) => (
-          <Card key={i} className="ctv-card">
+          <Card key={i} className="ctv-card ctv-card-hover">
             <CardContent className="p-3 text-center">
-              <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">{s.label}</p>
               <p className={`text-xl font-bold ${s.color}`}>{s.value}</p>
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">{s.label}</p>
             </CardContent>
           </Card>
         ))}
@@ -118,45 +118,46 @@ export const CTVListings = ({ userId, onAddNew }: Props) => {
           ))}
         </div>
       ) : !filtered.length ? (
-        /* Enhanced empty state */
-        <Card className="ctv-card border-dashed">
-          <CardContent className="py-14 text-center space-y-5">
-            <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto">
+        /* Enhanced empty state with motivation */
+        <div className="relative rounded-2xl border border-dashed border-border/30 overflow-hidden" style={{ background: "linear-gradient(135deg, hsl(240 6% 10%), hsl(357 92% 47% / 0.04))" }}>
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,hsl(357_92%_47%_/_0.06),transparent_70%)]" />
+          <div className="relative py-14 text-center space-y-5">
+            <div className="w-16 h-16 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center mx-auto">
               <Rocket className="h-8 w-8 text-primary" />
             </div>
             <div className="space-y-2">
-              <h3 className="text-lg font-bold text-foreground">Bạn chưa có sản phẩm nào</h3>
+              <h3 className="text-xl font-bold text-foreground">🔥 Bắt đầu kiếm tiền ngay!</h3>
               <p className="text-sm text-muted-foreground max-w-sm mx-auto">
                 "Sản phẩm đầu tiên quyết định 80% doanh thu của bạn"
               </p>
             </div>
 
-            <div className="flex items-center justify-center gap-1.5 flex-wrap">
+            <div className="flex items-center justify-center gap-2 flex-wrap">
               {[
-                { step: "1", text: "Tạo sản phẩm" },
-                { step: "2", text: "Admin duyệt" },
-                { step: "3", text: "Kiếm tiền" },
+                { step: "1", text: "Tạo sản phẩm", icon: Package },
+                { step: "2", text: "Admin duyệt", icon: Zap },
+                { step: "3", text: "Kiếm tiền", icon: Rocket },
               ].map((s, i) => (
-                <div key={i} className="flex items-center gap-1.5">
+                <div key={i} className="flex items-center gap-2">
                   {i > 0 && <ArrowRight className="h-3 w-3 text-muted-foreground/30" />}
-                  <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-accent text-[11px]">
-                    <span className="w-4 h-4 rounded-full bg-primary/20 text-primary font-bold flex items-center justify-center text-[9px]">{s.step}</span>
-                    <span className="text-muted-foreground font-medium">{s.text}</span>
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-accent/50 border border-border/20 text-[11px]">
+                    <span className="w-5 h-5 rounded-full bg-primary/20 text-primary font-bold flex items-center justify-center text-[10px]">{s.step}</span>
+                    <span className="text-foreground font-medium">{s.text}</span>
                   </div>
                 </div>
               ))}
             </div>
 
-            <div className="flex items-center justify-center gap-2">
+            <div className="flex items-center justify-center gap-2 pt-2">
               <Button onClick={onAddNew} className="ctv-glow-btn rounded-xl">
                 <PlusCircle className="h-4 w-4 mr-1.5" /> Tạo sản phẩm ngay
               </Button>
-              <Button variant="outline" size="sm" className="rounded-xl">
+              <Button variant="outline" size="sm" className="rounded-xl text-xs border-border/30 hover:border-border/50">
                 <BookOpen className="h-3.5 w-3.5 mr-1" /> Hướng dẫn
               </Button>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {filtered.map((l) => {
@@ -164,12 +165,12 @@ export const CTVListings = ({ userId, onAddNew }: Props) => {
             return (
               <Card key={l.id} className="ctv-card ctv-card-hover overflow-hidden group">
                 <CardContent className="p-0">
-                  <div className="aspect-video bg-accent/30 relative overflow-hidden rounded-t-2xl">
+                  <div className="aspect-video bg-accent/20 relative overflow-hidden rounded-t-2xl">
                     {l.thumbnail_url ? (
                       <img src={l.thumbnail_url} alt={l.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center">
-                        <ImageIcon className="h-8 w-8 text-muted-foreground/15" />
+                        <ImageIcon className="h-8 w-8 text-muted-foreground/10" />
                       </div>
                     )}
                     <div className="absolute top-2 right-2">
@@ -190,13 +191,13 @@ export const CTVListings = ({ userId, onAddNew }: Props) => {
                       <span className="text-[10px] text-muted-foreground">Bán: {l.total_sold}</span>
                     </div>
                     <div className="flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Button variant="outline" size="sm" className="flex-1 h-7 text-[10px] rounded-lg">
+                      <Button variant="outline" size="sm" className="flex-1 h-7 text-[10px] rounded-lg border-border/30">
                         <Eye className="h-3 w-3 mr-1" /> Xem
                       </Button>
-                      <Button variant="outline" size="sm" className="flex-1 h-7 text-[10px] rounded-lg">
+                      <Button variant="outline" size="sm" className="flex-1 h-7 text-[10px] rounded-lg border-border/30">
                         <Edit className="h-3 w-3 mr-1" /> Sửa
                       </Button>
-                      <Button variant="outline" size="sm" className="h-7 text-[10px] rounded-lg px-2">
+                      <Button variant="outline" size="sm" className="h-7 text-[10px] rounded-lg px-2 border-border/30">
                         <Package className="h-3 w-3" />
                       </Button>
                     </div>

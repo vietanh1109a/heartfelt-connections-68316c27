@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
 import { toast } from "@/hooks/use-toast";
 import { User, Shield, Award, TrendingUp, CreditCard, Info } from "lucide-react";
 
@@ -23,9 +24,9 @@ interface Props {
 }
 
 function getCTVLevel(totalEarned: number) {
-  if (totalEarned >= 5000000) return { name: "Gold", color: "text-yellow-400", bg: "bg-yellow-400/10", border: "border-yellow-400/20" };
-  if (totalEarned >= 1000000) return { name: "Silver", color: "text-foreground", bg: "bg-secondary", border: "border-border" };
-  return { name: "Bronze", color: "text-orange-400", bg: "bg-orange-400/10", border: "border-orange-400/20" };
+  if (totalEarned >= 5000000) return { name: "Gold", color: "text-yellow-400", bg: "bg-yellow-400/10", border: "border-yellow-400/20", pct: 100, next: null, icon: "🏆" };
+  if (totalEarned >= 1000000) return { name: "Silver", color: "text-slate-300", bg: "bg-slate-400/10", border: "border-slate-400/20", pct: Math.round((totalEarned / 5000000) * 100), next: "Gold (5M)", icon: "🥈" };
+  return { name: "Bronze", color: "text-orange-400", bg: "bg-orange-400/10", border: "border-orange-400/20", pct: Math.round((totalEarned / 1000000) * 100), next: "Silver (1M)", icon: "🥉" };
 }
 
 export const CTVSettings = ({ profile, onSuccess }: Props) => {
@@ -65,18 +66,27 @@ export const CTVSettings = ({ profile, onSuccess }: Props) => {
     <div className="space-y-4">
       {/* Level + Stats row */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-        <Card className={`ctv-card ${level.border}`}>
+        <Card className={`ctv-card ctv-card-hover ${level.border}`}>
           <CardContent className="p-3 flex items-center gap-3">
             <div className={`p-2 rounded-xl ${level.bg}`}>
               <Award className={`h-4 w-4 ${level.color}`} />
             </div>
-            <div>
+            <div className="flex-1">
               <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">CTV Level</p>
-              <p className={`text-lg font-bold ${level.color}`}>{level.name}</p>
+              <p className={`text-lg font-bold ${level.color}`}>{level.icon} {level.name}</p>
+              {level.next && (
+                <div className="mt-1 space-y-0.5">
+                  <div className="flex justify-between text-[9px]">
+                    <span className="text-muted-foreground">→ {level.next}</span>
+                    <span className={level.color}>{level.pct}%</span>
+                  </div>
+                  <Progress value={level.pct} className="h-1" />
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
-        <Card className="ctv-card">
+        <Card className="ctv-card ctv-card-hover">
           <CardContent className="p-3 flex items-center gap-3">
             <div className="p-2 rounded-xl bg-primary/10">
               <TrendingUp className="h-4 w-4 text-primary" />
@@ -87,7 +97,7 @@ export const CTVSettings = ({ profile, onSuccess }: Props) => {
             </div>
           </CardContent>
         </Card>
-        <Card className="ctv-card">
+        <Card className="ctv-card ctv-card-hover">
           <CardContent className="p-3 flex items-center gap-3">
             <div className="p-2 rounded-xl bg-green-400/10">
               <Shield className="h-4 w-4 text-green-400" />
@@ -100,9 +110,8 @@ export const CTVSettings = ({ profile, onSuccess }: Props) => {
         </Card>
       </div>
 
-      {/* 3 Cards: Personal, Bank, Account info */}
+      {/* 3 Cards: Personal, Account info */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-        {/* Card 1: Personal */}
         <Card className="ctv-card">
           <CardContent className="p-4 space-y-3">
             <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
@@ -134,7 +143,6 @@ export const CTVSettings = ({ profile, onSuccess }: Props) => {
           </CardContent>
         </Card>
 
-        {/* Card 2: Account + Commission info */}
         <div className="space-y-3">
           <Card className="ctv-card">
             <CardContent className="p-4 space-y-2.5">
@@ -154,7 +162,7 @@ export const CTVSettings = ({ profile, onSuccess }: Props) => {
             </CardContent>
           </Card>
 
-          <Card className="ctv-card bg-accent/30">
+          <Card className="ctv-card">
             <CardContent className="p-3.5 space-y-1.5">
               <h3 className="text-xs font-semibold text-foreground flex items-center gap-1.5">
                 <Info className="h-3.5 w-3.5 text-muted-foreground" /> Lưu ý
