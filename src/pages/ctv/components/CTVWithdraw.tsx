@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "@/hooks/use-toast";
 import { Wallet, Clock, ArrowDownToLine, CheckCircle, XCircle, AlertTriangle, Banknote } from "lucide-react";
 import { format } from "date-fns";
@@ -56,8 +56,11 @@ export const CTVWithdraw = ({ profile, onSuccess }: Props) => {
     return payouts.filter(p => p.status === "paid" || p.status === "approved").reduce((sum, p) => sum + p.amount, 0);
   }, [payouts, profile.total_withdrawn]);
 
+  const amountNum = parseInt(amount) || 0;
+  const fee = Math.round(amountNum * 0); // No fee currently
+  const receive = amountNum - fee;
+
   const handleSubmit = async () => {
-    const amountNum = parseInt(amount);
     if (isNaN(amountNum) || amountNum <= 0) {
       toast({ title: "Số tiền không hợp lệ", variant: "destructive" });
       return;
@@ -91,71 +94,67 @@ export const CTVWithdraw = ({ profile, onSuccess }: Props) => {
 
   return (
     <div className="space-y-4">
-      {/* 3 KPI cards on top */}
+      {/* 3 KPI cards */}
       <div className="grid grid-cols-3 gap-2">
-        <Card className="border-primary/20 bg-primary/5">
-          <CardContent className="p-3 flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-primary/10">
-              <Wallet className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Khả dụng</p>
-              <p className="text-lg font-bold text-primary">{availableBalance.toLocaleString("vi-VN")}đ</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="border-border/50">
-          <CardContent className="p-3 flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-yellow-400/10">
-              <Clock className="h-5 w-5 text-yellow-400" />
-            </div>
-            <div>
-              <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Đang chờ</p>
-              <p className="text-lg font-bold text-yellow-400">{pendingAmount.toLocaleString("vi-VN")}đ</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="border-border/50">
-          <CardContent className="p-3 flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-green-400/10">
-              <Banknote className="h-5 w-5 text-green-400" />
-            </div>
-            <div>
-              <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Đã rút</p>
-              <p className="text-lg font-bold text-green-400">{totalWithdrawn.toLocaleString("vi-VN")}đ</p>
-            </div>
-          </CardContent>
-        </Card>
+        {[
+          { label: "Khả dụng", value: availableBalance, icon: Wallet, color: "text-primary", iconBg: "bg-primary/10" },
+          { label: "Đang chờ", value: pendingAmount, icon: Clock, color: "text-yellow-400", iconBg: "bg-yellow-400/10" },
+          { label: "Đã rút", value: totalWithdrawn, icon: Banknote, color: "text-green-400", iconBg: "bg-green-400/10" },
+        ].map((s, i) => {
+          const Icon = s.icon;
+          return (
+            <Card key={i} className="ctv-card ctv-card-hover">
+              <CardContent className="p-3 flex items-center gap-2.5">
+                <div className={`p-2 rounded-xl ${s.iconBg}`}>
+                  <Icon className={`h-4 w-4 ${s.color}`} />
+                </div>
+                <div>
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">{s.label}</p>
+                  <p className={`text-lg font-bold ${s.color}`}>{s.value.toLocaleString("vi-VN")}đ</p>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
 
       {/* 50/50 layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
         {/* Form */}
-        <Card className="border-border/50">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm flex items-center gap-2">
-              <ArrowDownToLine className="h-4 w-4" /> Yêu cầu rút tiền
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2.5">
+        <Card className="ctv-card">
+          <CardContent className="p-4 space-y-3">
+            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+              <ArrowDownToLine className="h-3.5 w-3.5" /> Yêu cầu rút tiền
+            </h3>
             <div className="space-y-1">
               <label className="text-xs font-medium text-foreground">Số tiền (VNĐ)</label>
-              <Input type="number" placeholder="100000" value={amount} onChange={e => setAmount(e.target.value)} className="h-9" />
+              <Input type="number" placeholder="100000" value={amount} onChange={e => setAmount(e.target.value)} className="h-9 rounded-xl" />
+              {amountNum > 0 && (
+                <p className="text-[10px] text-muted-foreground">
+                  Bạn sẽ nhận: <span className="text-primary font-semibold">{receive.toLocaleString("vi-VN")}đ</span>
+                </p>
+              )}
             </div>
             <div className="space-y-1">
               <label className="text-xs font-medium text-foreground">Ngân hàng</label>
-              <Input placeholder="VD: Vietcombank" value={bankName} onChange={e => setBankName(e.target.value)} className="h-9" />
+              <Input placeholder="VD: Vietcombank" value={bankName} onChange={e => setBankName(e.target.value)} className="h-9 rounded-xl" />
             </div>
-            <div className="space-y-1">
-              <label className="text-xs font-medium text-foreground">Số tài khoản</label>
-              <Input placeholder="Số tài khoản" value={bankAccount} onChange={e => setBankAccount(e.target.value)} className="h-9" />
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-foreground">Số tài khoản</label>
+                <Input placeholder="Số TK" value={bankAccount} onChange={e => setBankAccount(e.target.value)} className="h-9 rounded-xl" />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-foreground">Chủ TK</label>
+                <Input placeholder="NGUYEN VAN A" value={bankHolder} onChange={e => setBankHolder(e.target.value)} className="h-9 rounded-xl" />
+              </div>
             </div>
-            <div className="space-y-1">
-              <label className="text-xs font-medium text-foreground">Tên chủ TK</label>
-              <Input placeholder="NGUYEN VAN A" value={bankHolder} onChange={e => setBankHolder(e.target.value)} className="h-9" />
-            </div>
-            <Button className="w-full h-9" onClick={handleSubmit} disabled={submitting || availableBalance <= 0}>
-              {submitting ? "Đang gửi..." : "Gửi yêu cầu"}
+            <Button
+              className="w-full h-9 rounded-xl ctv-glow-btn"
+              onClick={handleSubmit}
+              disabled={submitting || availableBalance <= 0 || amountNum <= 0 || amountNum > availableBalance}
+            >
+              {submitting ? "Đang gửi..." : "Gửi yêu cầu rút tiền"}
             </Button>
             {availableBalance <= 0 && (
               <p className="text-[10px] text-muted-foreground text-center flex items-center justify-center gap-1">
@@ -166,24 +165,22 @@ export const CTVWithdraw = ({ profile, onSuccess }: Props) => {
         </Card>
 
         {/* History */}
-        <Card className="border-border/50">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Lịch sử rút tiền</CardTitle>
-          </CardHeader>
-          <CardContent>
+        <Card className="ctv-card">
+          <CardContent className="p-4">
+            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Lịch sử rút tiền</h3>
             {(!payouts || payouts.length === 0) ? (
               <div className="py-10 text-center space-y-2">
-                <Wallet className="h-7 w-7 mx-auto text-muted-foreground/20" />
-                <p className="text-xs text-muted-foreground">Chưa có yêu cầu rút tiền nào</p>
+                <Wallet className="h-7 w-7 mx-auto text-muted-foreground/15" />
+                <p className="text-xs text-muted-foreground">Chưa có yêu cầu nào</p>
               </div>
             ) : (
-              <div className="space-y-0 divide-y divide-border/20">
+              <div className="divide-y divide-border/20">
                 {payouts.map((p) => {
                   const st = statusConfig[p.status] ?? statusConfig.pending;
                   const Icon = st.icon;
                   return (
                     <div key={p.id} className="flex items-center gap-2.5 py-2.5">
-                      <div className={`p-1 rounded-md bg-secondary/50 ${st.className}`}>
+                      <div className={`p-1.5 rounded-lg bg-accent ${st.className}`}>
                         <Icon className="h-3.5 w-3.5" />
                       </div>
                       <div className="flex-1 min-w-0">
