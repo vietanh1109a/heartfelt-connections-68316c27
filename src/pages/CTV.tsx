@@ -68,10 +68,7 @@ const CTV = () => {
     const { error: profileError } = await supabase.from("ctv_profiles").insert({
       user_id: user.id,
       display_name: displayName.trim(),
-      contact_info: contactInfo.trim() || null,
-      bank_name: null,
-      bank_account: null,
-      bank_holder: null,
+      phone: contactInfo.trim() || null,
     });
 
     setSubmitting(false);
