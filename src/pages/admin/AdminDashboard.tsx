@@ -28,10 +28,7 @@ const AdminDashboard = () => {
   const { data: pendingReportsCount } = useQuery({
     queryKey: ["pending-reports-count"],
     queryFn: async () => {
-      const { count } = await supabase
-        .from("cookie_reports")
-        .select("id", { count: "exact", head: true })
-        .eq("status", "pending");
+      const { count } = await supabase.from("cookie_reports").select("id", { count: "exact", head: true }).eq("status", "pending");
       return count ?? 0;
     },
     refetchInterval: 30000,
@@ -42,10 +39,7 @@ const AdminDashboard = () => {
   if (adminLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-          <p className="text-sm text-muted-foreground">Đang kiểm tra quyền...</p>
-        </div>
+        <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -53,43 +47,33 @@ const AdminDashboard = () => {
   if (!hasAccess) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-background gap-4">
-        <Shield className="h-16 w-16 text-destructive" />
-        <h1 className="text-2xl font-bold text-foreground">Không có quyền truy cập</h1>
-        <p className="text-muted-foreground">Bạn không phải admin hoặc moderator.</p>
+        <Shield className="h-12 w-12 text-destructive" />
+        <h1 className="text-xl font-bold text-foreground">Không có quyền truy cập</h1>
         <Button variant="outline" onClick={() => navigate("/")}>Về trang chủ</Button>
       </div>
     );
   }
 
   const tabs = [
-    { value: "stats", label: "Thống kê", icon: <BarChart2 className="h-4 w-4" />, content: <StatsTab /> },
-    { value: "users", label: "Users", icon: <Users className="h-4 w-4" />, content: <UsersTab /> },
-    {
-      value: "cookie-reports",
-      label: "Báo lỗi",
-      icon: (
-        <span className="relative">
-          <AlertTriangle className="h-4 w-4" />
-          {(pendingReportsCount ?? 0) > 0 && (
-            <span className="absolute -top-1.5 -right-1.5 h-3.5 w-3.5 rounded-full bg-destructive text-[9px] font-bold flex items-center justify-center text-destructive-foreground">
-              {pendingReportsCount}
-            </span>
-          )}
-        </span>
-      ),
-      content: <CookieReportsTab />,
-    },
-    { value: "cookies", label: "Cookie Stock", icon: <Cookie className="h-4 w-4" />, content: <CookieStockTab /> },
-    { value: "netflix-accounts", label: "Netflix Accounts", icon: <Film className="h-4 w-4" />, content: <NetflixAccountsTab /> },
-    { value: "transactions", label: "Giao dịch", icon: <DollarSign className="h-4 w-4" />, content: <TransactionsTab /> },
-    { value: "deposits", label: "Nạp tiền", icon: <Wallet className="h-4 w-4" />, content: <DepositsTab /> },
-    { value: "vip-plans", label: "Gói VIP", icon: <Crown className="h-4 w-4" />, content: <VipPlansTab /> },
-    { value: "products", label: "Sản phẩm", icon: <Package className="h-4 w-4" />, content: <ProductsTab /> },
-    { value: "ctv-listings", label: "SP CTV", icon: <UserPlus className="h-4 w-4" />, content: <CTVListingsTab /> },
-    { value: "ctv-management", label: "Cộng tác viên", icon: <Handshake className="h-4 w-4" />, content: <CTVManagementTab /> },
+    { value: "stats", label: "Thống kê", icon: <BarChart2 className="h-3.5 w-3.5" />, content: <StatsTab /> },
+    { value: "users", label: "Users", icon: <Users className="h-3.5 w-3.5" />, content: <UsersTab /> },
+    { value: "cookie-reports", label: "Báo lỗi", icon: (
+      <span className="relative">
+        <AlertTriangle className="h-3.5 w-3.5" />
+        {(pendingReportsCount ?? 0) > 0 && <span className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-destructive text-[8px] font-bold flex items-center justify-center text-white">{pendingReportsCount}</span>}
+      </span>
+    ), content: <CookieReportsTab /> },
+    { value: "cookies", label: "Cookies", icon: <Cookie className="h-3.5 w-3.5" />, content: <CookieStockTab /> },
+    { value: "netflix-accounts", label: "Netflix", icon: <Film className="h-3.5 w-3.5" />, content: <NetflixAccountsTab /> },
+    { value: "transactions", label: "Giao dịch", icon: <DollarSign className="h-3.5 w-3.5" />, content: <TransactionsTab /> },
+    { value: "deposits", label: "Nạp tiền", icon: <Wallet className="h-3.5 w-3.5" />, content: <DepositsTab /> },
+    { value: "vip-plans", label: "VIP", icon: <Crown className="h-3.5 w-3.5" />, content: <VipPlansTab /> },
+    { value: "products", label: "Sản phẩm", icon: <Package className="h-3.5 w-3.5" />, content: <ProductsTab /> },
+    { value: "ctv-listings", label: "SP CTV", icon: <UserPlus className="h-3.5 w-3.5" />, content: <CTVListingsTab /> },
+    { value: "ctv-management", label: "CTV", icon: <Handshake className="h-3.5 w-3.5" />, content: <CTVManagementTab /> },
     ...(isSuperAdmin ? [
-      { value: "moderators", label: "Moderators", icon: <UserCheck className="h-4 w-4" />, content: <ModeratorsTab /> },
-      { value: "settings", label: "Cài đặt", icon: <Settings className="h-4 w-4" />, content: <SettingsTab /> },
+      { value: "moderators", label: "Mods", icon: <UserCheck className="h-3.5 w-3.5" />, content: <ModeratorsTab /> },
+      { value: "settings", label: "Cài đặt", icon: <Settings className="h-3.5 w-3.5" />, content: <SettingsTab /> },
     ] : []),
   ].filter(tab => canViewTab(tab.value));
 
@@ -97,44 +81,37 @@ const AdminDashboard = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Hero header with gradient */}
-      <header className="relative border-b border-border/20 overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,hsl(357_92%_47%_/_0.06),transparent_60%)]" />
-        <div className="relative flex items-center justify-between px-6 py-4">
-          <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" onClick={() => navigate("/")} className="hover:bg-accent/50">
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-            <div>
-              <h1 className="text-lg font-bold text-foreground flex items-center gap-2">
-                <Shield className="h-4 w-4 text-primary" />
-                {isSuperAdmin ? "Admin Dashboard" : "Moderator Dashboard"}
-              </h1>
-              <p className="text-[11px] text-muted-foreground">Quản lý hệ thống</p>
-            </div>
+      {/* Header */}
+      <header className="h-14 flex items-center justify-between px-4 md:px-6 border-b border-border/50 bg-card/50 backdrop-blur-sm">
+        <div className="flex items-center gap-3">
+          <Button variant="ghost" size="icon" onClick={() => navigate("/")} className="h-8 w-8">
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <div>
+            <h1 className="text-sm font-semibold text-foreground">
+              {isSuperAdmin ? "Admin" : "Moderator"} Dashboard
+            </h1>
           </div>
-          {isModerator && !isSuperAdmin && (
-            <span className="text-xs px-3 py-1 rounded-full bg-primary/10 text-primary border border-primary/20 font-medium">
-              Moderator
-            </span>
-          )}
         </div>
+        {isModerator && !isSuperAdmin && (
+          <span className="text-[11px] px-2.5 py-0.5 rounded-md bg-primary/10 text-primary font-medium">Mod</span>
+        )}
       </header>
 
-      <div className="max-w-[1280px] mx-auto p-4 md:p-6">
+      <div className="max-w-[1200px] mx-auto p-4 md:p-6">
         <Tabs defaultValue={defaultTab}>
-          <TabsList className="mb-5 flex-wrap bg-card/50 border border-border/20 p-1 rounded-xl">
-            {tabs.map(tab => (
-              <TabsTrigger key={tab.value} value={tab.value} className="gap-1.5 rounded-lg text-xs data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-none">
-                {tab.icon} {tab.label}
-              </TabsTrigger>
-            ))}
-          </TabsList>
+          <div className="overflow-x-auto pb-1">
+            <TabsList className="mb-5 bg-accent/50 border border-border/50 p-1 rounded-lg inline-flex">
+              {tabs.map(tab => (
+                <TabsTrigger key={tab.value} value={tab.value} className="gap-1.5 rounded-md text-xs px-3 py-1.5 data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm">
+                  {tab.icon} {tab.label}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </div>
 
           {tabs.map(tab => (
-            <TabsContent key={tab.value} value={tab.value}>
-              {tab.content}
-            </TabsContent>
+            <TabsContent key={tab.value} value={tab.value}>{tab.content}</TabsContent>
           ))}
         </Tabs>
       </div>
