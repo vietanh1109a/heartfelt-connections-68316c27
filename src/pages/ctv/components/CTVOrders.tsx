@@ -1,7 +1,6 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import { ShoppingCart, CheckCircle, AlertTriangle, TrendingUp } from "lucide-react";
@@ -63,19 +62,19 @@ export const CTVOrders = ({ userId }: Props) => {
   ];
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
         {statCards.map((s, i) => {
           const Icon = s.icon;
           return (
             <Card key={i} className="border-border/50">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs text-muted-foreground">{s.label}</span>
-                  <div className={`p-1.5 rounded-lg ${s.bg}`}><Icon className={`h-3.5 w-3.5 ${s.color}`} /></div>
+              <CardContent className="p-3">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[10px] text-muted-foreground uppercase tracking-wide">{s.label}</span>
+                  <div className={`p-1 rounded-md ${s.bg}`}><Icon className={`h-3.5 w-3.5 ${s.color}`} /></div>
                 </div>
-                <p className={`text-xl font-bold ${s.color}`}>{s.value}</p>
+                <p className={`text-lg font-bold ${s.color}`}>{s.value}</p>
               </CardContent>
             </Card>
           );
@@ -100,53 +99,49 @@ export const CTVOrders = ({ userId }: Props) => {
         </CardContent>
       </Card>
 
-      {/* Orders Table */}
+      {/* Orders Table — always show header */}
       <Card className="border-border/50">
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-medium text-muted-foreground">Danh sách đơn hàng</CardTitle>
         </CardHeader>
         <CardContent>
-          {isLoading ? (
-            <div className="py-8 text-center text-muted-foreground animate-pulse">Đang tải...</div>
-          ) : !orders?.length ? (
-            <div className="py-12 text-center space-y-2">
-              <ShoppingCart className="h-8 w-8 mx-auto text-muted-foreground/30" />
-              <p className="text-sm text-muted-foreground">Chưa có đơn hàng nào</p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border/30 text-xs text-muted-foreground uppercase">
-                    <th className="text-left py-2.5 font-medium">Sản phẩm</th>
-                    <th className="text-right py-2.5 font-medium">Giá</th>
-                    <th className="text-right py-2.5 font-medium">Bạn nhận</th>
-                    <th className="text-center py-2.5 font-medium">Trạng thái</th>
-                    <th className="text-right py-2.5 font-medium">Ngày</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border/20">
-                  {orders.map((o: any) => {
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border/30 text-xs text-muted-foreground uppercase">
+                  <th className="text-left py-2 font-medium">Mã đơn</th>
+                  <th className="text-left py-2 font-medium">Sản phẩm</th>
+                  <th className="text-right py-2 font-medium">Giá</th>
+                  <th className="text-right py-2 font-medium">Hoa hồng</th>
+                  <th className="text-center py-2 font-medium">Trạng thái</th>
+                  <th className="text-right py-2 font-medium">Thời gian</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border/20">
+                {isLoading ? (
+                  <tr><td colSpan={6} className="py-8 text-center text-muted-foreground animate-pulse">Đang tải...</td></tr>
+                ) : !orders?.length ? (
+                  <tr><td colSpan={6} className="py-10 text-center text-sm text-muted-foreground">Chưa có đơn hàng nào</td></tr>
+                ) : (
+                  orders.map((o: any) => {
                     const st = statusConfig[o.status] ?? { label: o.status, className: "bg-secondary text-muted-foreground" };
                     return (
                       <tr key={o.id} className="hover:bg-secondary/30 transition-colors">
-                        <td className="py-3">
-                          <p className="font-medium text-foreground">{o.ctv_listings?.title ?? "—"}</p>
-                          <p className="text-xs text-muted-foreground font-mono">{o.id.slice(0, 8)}</p>
-                        </td>
-                        <td className="text-right text-foreground">{(o.amount ?? 0).toLocaleString("vi-VN")}đ</td>
-                        <td className="text-right text-primary font-semibold">{(o.commission ?? 0).toLocaleString("vi-VN")}đ</td>
+                        <td className="py-2.5 text-[10px] text-muted-foreground font-mono">{o.id.slice(0, 8)}</td>
+                        <td className="py-2.5 text-xs font-medium text-foreground truncate max-w-[160px]">{o.ctv_listings?.title ?? "—"}</td>
+                        <td className="text-right text-xs text-foreground">{(o.amount ?? 0).toLocaleString("vi-VN")}đ</td>
+                        <td className="text-right text-xs text-primary font-semibold">{(o.commission ?? 0).toLocaleString("vi-VN")}đ</td>
                         <td className="text-center">
                           <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${st.className}`}>{st.label}</span>
                         </td>
-                        <td className="text-right text-muted-foreground text-xs">{format(new Date(o.created_at), "dd/MM/yy HH:mm")}</td>
+                        <td className="text-right text-[10px] text-muted-foreground">{format(new Date(o.created_at), "dd/MM/yy HH:mm")}</td>
                       </tr>
                     );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
         </CardContent>
       </Card>
     </div>
