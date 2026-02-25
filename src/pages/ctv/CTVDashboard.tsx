@@ -38,12 +38,34 @@ const CTVDashboard = () => {
     queryKey: ["ctv-profile", user?.id],
     queryFn: async () => {
       if (!user) return null;
-      const { data } = await supabase
+      // Try ctv_profiles first
+      const { data: profile } = await supabase
         .from("ctv_profiles")
         .select("*")
         .eq("user_id", user.id)
         .maybeSingle();
-      return data;
+      if (profile) return profile;
+
+      // Fallback: if ctv_registrations exists, auto-create ctv_profiles
+      const { data: reg } = await supabase
+        .from("ctv_registrations")
+        .select("*")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (reg) {
+        const { data: newProfile } = await supabase
+          .from("ctv_profiles")
+          .insert({
+            user_id: user.id,
+            display_name: reg.display_name,
+            phone: reg.contact_info || null,
+            status: reg.status === "approved" ? "approved" : "pending",
+          })
+          .select("*")
+          .single();
+        return newProfile;
+      }
+      return null;
     },
     enabled: !!user,
   });
