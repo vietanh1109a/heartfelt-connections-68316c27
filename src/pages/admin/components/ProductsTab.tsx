@@ -7,7 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Package, Plus, Edit, Eye, EyeOff, Trash2, Upload, ShoppingCart } from "lucide-react";
+import { Package, Plus, Edit, Eye, EyeOff, Upload } from "lucide-react";
+import { CATEGORIES, PRODUCT_TYPES, PLATFORMS, getCategoryLabel, getTypeLabel, getPlatformLabel } from "@/lib/shopConstants";
 
 interface Product {
   id: string;
@@ -15,6 +16,8 @@ interface Product {
   description: string | null;
   note: string | null;
   category: string;
+  product_type: string;
+  platform: string | null;
   price: number;
   original_price: number | null;
   thumbnail_url: string | null;
@@ -41,7 +44,9 @@ export function ProductsTab() {
   const [formName, setFormName] = useState("");
   const [formDescription, setFormDescription] = useState("");
   const [formNote, setFormNote] = useState("");
-  const [formCategory, setFormCategory] = useState("product");
+  const [formCategory, setFormCategory] = useState("netflix");
+  const [formProductType, setFormProductType] = useState("account");
+  const [formPlatform, setFormPlatform] = useState("");
   const [formPrice, setFormPrice] = useState("");
   const [formOriginalPrice, setFormOriginalPrice] = useState("");
   const [formThumbnail, setFormThumbnail] = useState("");
@@ -55,7 +60,6 @@ export function ProductsTab() {
         .order("created_at", { ascending: false });
       if (error) throw error;
 
-      // Get stock counts
       const ids = (data ?? []).map((p: any) => p.id);
       if (ids.length > 0) {
         const { data: stockData } = await supabase
@@ -67,9 +71,9 @@ export function ProductsTab() {
         (stockData ?? []).forEach((s: any) => {
           if (!s.is_sold) stockMap[s.product_id] = (stockMap[s.product_id] || 0) + 1;
         });
-        return (data ?? []).map((p: any) => ({ ...p, stock_count: stockMap[p.id] || 0 }));
+        return (data ?? []).map((p: any) => ({ ...p, product_type: p.product_type || "account", stock_count: stockMap[p.id] || 0 }));
       }
-      return (data ?? []).map((p: any) => ({ ...p, stock_count: 0 }));
+      return (data ?? []).map((p: any) => ({ ...p, product_type: p.product_type || "account", stock_count: 0 }));
     },
   });
 
@@ -77,7 +81,9 @@ export function ProductsTab() {
     setFormName("");
     setFormDescription("");
     setFormNote("");
-    setFormCategory("product");
+    setFormCategory("netflix");
+    setFormProductType("account");
+    setFormPlatform("");
     setFormPrice("");
     setFormOriginalPrice("");
     setFormThumbnail("");
@@ -89,6 +95,8 @@ export function ProductsTab() {
     setFormDescription(p.description || "");
     setFormNote(p.note || "");
     setFormCategory(p.category);
+    setFormProductType(p.product_type || "account");
+    setFormPlatform(p.platform || "");
     setFormPrice(String(p.price));
     setFormOriginalPrice(p.original_price ? String(p.original_price) : "");
     setFormThumbnail(p.thumbnail_url || "");
@@ -121,22 +129,24 @@ export function ProductsTab() {
     }
     setSaving(true);
     try {
-      const payload = {
+      const payload: any = {
         name: formName.trim(),
         description: formDescription.trim() || null,
         note: formNote.trim() || null,
         category: formCategory,
+        product_type: formProductType,
+        platform: formPlatform || null,
         price: parseInt(formPrice),
         original_price: formOriginalPrice ? parseInt(formOriginalPrice) : null,
         thumbnail_url: formThumbnail || null,
       };
 
       if (editProduct) {
-        const { error } = await supabase.from("products").update(payload).eq("id", editProduct.id);
+        const { error } = await (supabase as any).from("products").update(payload).eq("id", editProduct.id);
         if (error) throw error;
         toast.success("Đã cập nhật sản phẩm!");
       } else {
-        const { error } = await supabase.from("products").insert(payload);
+        const { error } = await (supabase as any).from("products").insert(payload);
         if (error) throw error;
         toast.success("Đã tạo sản phẩm!");
       }
@@ -186,12 +196,14 @@ export function ProductsTab() {
     }
   };
 
+  const showPlatformField = ["game", "tool"].includes(formCategory);
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Package className="h-5 w-5 text-primary" />
-          <h2 className="text-foreground font-bold text-lg">Quản lý sản phẩm</h2>
+          <h2 className="text-foreground font-bold text-lg">Quản lý sản phẩm (Official)</h2>
         </div>
         <Button onClick={() => { resetForm(); setShowForm(true); }} className="gap-2">
           <Plus className="h-4 w-4" /> Thêm sản phẩm
@@ -209,6 +221,7 @@ export function ProductsTab() {
               <tr className="border-b border-border/30 text-muted-foreground">
                 <th className="text-left py-3 px-2">Ảnh</th>
                 <th className="text-left py-3 px-2">Tên</th>
+                <th className="text-left py-3 px-2">Danh mục</th>
                 <th className="text-left py-3 px-2">Loại</th>
                 <th className="text-right py-3 px-2">Giá</th>
                 <th className="text-right py-3 px-2">Tồn kho</th>
@@ -233,8 +246,14 @@ export function ProductsTab() {
                   </td>
                   <td className="py-2 px-2 text-foreground font-medium max-w-[200px] truncate">{p.name}</td>
                   <td className="py-2 px-2">
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${p.category === "game_key" ? "bg-purple-500/10 text-purple-400 border border-purple-500/20" : "bg-blue-500/10 text-blue-400 border border-blue-500/20"}`}>
-                      {p.category === "game_key" ? "Game Key" : "Sản phẩm"}
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                      {getCategoryLabel(p.category)}
+                    </span>
+                  </td>
+                  <td className="py-2 px-2">
+                    <span className="text-xs text-muted-foreground">
+                      {getTypeLabel(p.product_type)}
+                      {p.platform && ` · ${getPlatformLabel(p.platform)}`}
                     </span>
                   </td>
                   <td className="py-2 px-2 text-right text-primary font-semibold">{fmtVnd(p.price)}</td>
@@ -273,21 +292,53 @@ export function ProductsTab() {
           <DialogHeader>
             <DialogTitle className="text-foreground">{editProduct ? "Sửa sản phẩm" : "Thêm sản phẩm"}</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
             <div>
               <label className="text-sm font-medium text-foreground">Tên sản phẩm *</label>
               <Input value={formName} onChange={(e) => setFormName(e.target.value)} placeholder="VD: Netflix Premium 1 tháng" className="mt-1" />
             </div>
+
+            {/* Category */}
             <div>
-              <label className="text-sm font-medium text-foreground">Loại</label>
-              <Select value={formCategory} onValueChange={setFormCategory}>
+              <label className="text-sm font-medium text-foreground">Danh mục *</label>
+              <Select value={formCategory} onValueChange={(v) => { setFormCategory(v); if (!["game", "tool"].includes(v)) setFormPlatform(""); }}>
                 <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="product">Sản phẩm</SelectItem>
-                  <SelectItem value="game_key">Game Key</SelectItem>
+                  {CATEGORIES.map((c) => (
+                    <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
+
+            {/* Product Type */}
+            <div>
+              <label className="text-sm font-medium text-foreground">Loại sản phẩm *</label>
+              <Select value={formProductType} onValueChange={setFormProductType}>
+                <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {PRODUCT_TYPES.map((t) => (
+                    <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Platform - only for game/tool */}
+            {showPlatformField && (
+              <div>
+                <label className="text-sm font-medium text-foreground">Nền tảng</label>
+                <Select value={formPlatform} onValueChange={setFormPlatform}>
+                  <SelectTrigger className="mt-1"><SelectValue placeholder="Chọn nền tảng..." /></SelectTrigger>
+                  <SelectContent>
+                    {PLATFORMS.map((p) => (
+                      <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
             <div>
               <label className="text-sm font-medium text-foreground">Giá bán (VNĐ) *</label>
               <Input type="number" value={formPrice} onChange={(e) => setFormPrice(e.target.value)} placeholder="100000" className="mt-1" />
@@ -300,7 +351,6 @@ export function ProductsTab() {
                   Tiết kiệm {Math.round((1 - parseInt(formPrice) / parseInt(formOriginalPrice)) * 100)}%
                 </p>
               )}
-              <Input type="number" value={formPrice} onChange={(e) => setFormPrice(e.target.value)} placeholder="10000" className="mt-1" />
             </div>
             <div>
               <label className="text-sm font-medium text-foreground">Ghi chú ngắn</label>

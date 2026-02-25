@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "@/hooks/use-toast";
 import { ImagePlus, X, MessageCircle, Check, AlertTriangle, Lightbulb, ShieldCheck, Package, ListChecks, Send } from "lucide-react";
+import { CATEGORIES, PRODUCT_TYPES, PLATFORMS } from "@/lib/shopConstants";
 
 interface Props {
   userId: string;
@@ -35,7 +36,9 @@ function validateLine(line: string) {
 export const CTVAddListing = ({ userId, onSuccess }: Props) => {
   const [step, setStep] = useState(0);
   const [title, setTitle] = useState("");
-  const [category, setCategory] = useState("account");
+  const [category, setCategory] = useState("netflix");
+  const [productType, setProductType] = useState("account");
+  const [platform, setPlatform] = useState("");
   const [price, setPrice] = useState("");
   const [description, setDescription] = useState("");
   const [warrantyHours, setWarrantyHours] = useState("24");
@@ -81,6 +84,8 @@ export const CTVAddListing = ({ userId, onSuccess }: Props) => {
   const canGoStep2 = credLines.length > 0 && credLines.length <= MAX_ITEMS && invalidLines.length === 0;
   const canSubmit = agreed;
 
+  const showPlatformField = ["game", "tool"].includes(category);
+
   const handleSubmit = async () => {
     if (!canSubmit) return;
     setSubmitting(true);
@@ -99,12 +104,14 @@ export const CTVAddListing = ({ userId, onSuccess }: Props) => {
       thumbnailUrl = urlData.publicUrl;
     }
 
-    const { data: listing, error: listingError } = await supabase
+    const { data: listing, error: listingError } = await (supabase as any)
       .from("ctv_listings")
       .insert({
         ctv_user_id: userId,
         title: title.trim(),
         category,
+        product_type: productType,
+        platform: platform || null,
         price: priceNum,
         description: description.trim() || null,
         thumbnail_url: thumbnailUrl,
@@ -134,12 +141,8 @@ export const CTVAddListing = ({ userId, onSuccess }: Props) => {
     onSuccess();
   };
 
-  const categoryLabel: Record<string, string> = {
-    account: "Tài khoản",
-    key: "Key / License",
-    service: "Dịch vụ",
-    other: "Khác",
-  };
+  const getCategoryLabel = (val: string) => CATEGORIES.find(c => c.value === val)?.label ?? val;
+  const getTypeLabel = (val: string) => PRODUCT_TYPES.find(t => t.value === val)?.label ?? val;
 
   return (
     <div className="space-y-6">
@@ -207,19 +210,34 @@ export const CTVAddListing = ({ userId, onSuccess }: Props) => {
                   )}
                 </div>
 
+                {/* Category */}
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium text-foreground">Danh mục <span className="text-destructive">*</span></label>
+                  <Select value={category} onValueChange={(v) => { setCategory(v); if (!["game", "tool"].includes(v)) setPlatform(""); }}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {CATEGORIES.map((c) => (
+                        <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
                 <div className="grid grid-cols-2 gap-4">
+                  {/* Product Type */}
                   <div className="space-y-1.5">
-                    <label className="text-sm font-medium text-foreground">Loại sản phẩm</label>
-                    <Select value={category} onValueChange={setCategory}>
+                    <label className="text-sm font-medium text-foreground">Loại sản phẩm <span className="text-destructive">*</span></label>
+                    <Select value={productType} onValueChange={setProductType}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="account">Tài khoản</SelectItem>
-                        <SelectItem value="key">Key / License</SelectItem>
-                        <SelectItem value="service">Dịch vụ</SelectItem>
-                        <SelectItem value="other">Khác</SelectItem>
+                        {PRODUCT_TYPES.map((t) => (
+                          <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
+
+                  {/* Warranty */}
                   <div className="space-y-1.5">
                     <label className="text-sm font-medium text-foreground">Bảo hành</label>
                     <Select value={warrantyHours} onValueChange={setWarrantyHours}>
@@ -233,6 +251,21 @@ export const CTVAddListing = ({ userId, onSuccess }: Props) => {
                     </Select>
                   </div>
                 </div>
+
+                {/* Platform - only for game/tool */}
+                {showPlatformField && (
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-medium text-foreground">Nền tảng</label>
+                    <Select value={platform} onValueChange={setPlatform}>
+                      <SelectTrigger><SelectValue placeholder="Chọn nền tảng..." /></SelectTrigger>
+                      <SelectContent>
+                        {PLATFORMS.map((p) => (
+                          <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
 
                 <div className="space-y-1.5">
                   <label className="text-sm font-medium text-foreground">Tiêu đề <span className="text-destructive">*</span></label>
@@ -277,7 +310,6 @@ export const CTVAddListing = ({ userId, onSuccess }: Props) => {
                     className="font-mono text-xs"
                   />
 
-                  {/* Validation feedback */}
                   {credLines.length > 0 && (
                     <div className="space-y-1 mt-2">
                       {invalidLines.length > 0 && (
@@ -306,7 +338,6 @@ export const CTVAddListing = ({ userId, onSuccess }: Props) => {
                   )}
                 </div>
 
-                {/* Warning */}
                 <div className="p-3 rounded-lg bg-accent/50 border border-border/50 space-y-1.5">
                   <p className="text-xs text-muted-foreground flex items-center gap-1.5">
                     <AlertTriangle className="h-3.5 w-3.5 text-yellow-500 shrink-0" />
@@ -332,10 +363,11 @@ export const CTVAddListing = ({ userId, onSuccess }: Props) => {
                 <CardTitle className="text-base">Bước 3: Xác nhận & gửi duyệt</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                {/* Summary */}
                 <div className="rounded-lg bg-secondary/50 p-4 space-y-2 text-sm">
                   <div className="flex justify-between"><span className="text-muted-foreground">Tiêu đề:</span><span className="font-medium text-foreground">{title}</span></div>
-                  <div className="flex justify-between"><span className="text-muted-foreground">Loại:</span><span className="text-foreground">{categoryLabel[category]}</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Danh mục:</span><span className="text-foreground">{getCategoryLabel(category)}</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Loại:</span><span className="text-foreground">{getTypeLabel(productType)}</span></div>
+                  {platform && <div className="flex justify-between"><span className="text-muted-foreground">Nền tảng:</span><span className="text-foreground">{PLATFORMS.find(p => p.value === platform)?.label ?? platform}</span></div>}
                   <div className="flex justify-between"><span className="text-muted-foreground">Giá bán:</span><span className="text-foreground">{priceNum.toLocaleString("vi-VN")}đ</span></div>
                   <div className="flex justify-between"><span className="text-muted-foreground">Bảo hành:</span><span className="text-foreground">{warrantyHours === "24" ? "24 giờ" : warrantyHours === "72" ? "3 ngày" : warrantyHours === "168" ? "7 ngày" : "30 ngày"}</span></div>
                   <div className="flex justify-between"><span className="text-muted-foreground">Stock:</span><span className="text-foreground">{credLines.length} tài khoản</span></div>
@@ -344,7 +376,6 @@ export const CTVAddListing = ({ userId, onSuccess }: Props) => {
                   <div className="flex justify-between font-semibold"><span className="text-foreground">Bạn nhận:</span><span className="text-primary">{earning.toLocaleString("vi-VN")}đ/sản phẩm</span></div>
                 </div>
 
-                {/* Agreement */}
                 <label className="flex items-start gap-3 p-3 rounded-lg border border-border/50 bg-secondary/30 cursor-pointer hover:bg-secondary/50 transition-colors">
                   <Checkbox checked={agreed} onCheckedChange={(v) => setAgreed(v === true)} className="mt-0.5" />
                   <span className="text-sm text-foreground leading-relaxed">
@@ -368,7 +399,6 @@ export const CTVAddListing = ({ userId, onSuccess }: Props) => {
 
         {/* RIGHT – Preview + Tips */}
         <div className="lg:col-span-2 space-y-4">
-          {/* Live Preview Card */}
           <Card className="border-border/50 sticky top-4">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm text-muted-foreground">Preview sản phẩm</CardTitle>
@@ -384,6 +414,11 @@ export const CTVAddListing = ({ userId, onSuccess }: Props) => {
                 </div>
               )}
               <h3 className="font-semibold text-foreground truncate">{title || "Tiêu đề sản phẩm"}</h3>
+              <div className="flex flex-wrap gap-1">
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20">{getCategoryLabel(category)}</span>
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-400 border border-purple-500/20">{getTypeLabel(productType)}</span>
+                {platform && <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-500/10 text-green-400 border border-green-500/20">{PLATFORMS.find(p => p.value === platform)?.label ?? platform}</span>}
+              </div>
               <p className="text-xs text-muted-foreground line-clamp-2">{description || "Mô tả sản phẩm sẽ hiển thị ở đây..."}</p>
 
               <div className="rounded-lg bg-secondary/50 p-3 space-y-1.5 text-sm">
@@ -412,7 +447,6 @@ export const CTVAddListing = ({ userId, onSuccess }: Props) => {
             </CardContent>
           </Card>
 
-          {/* Tips */}
           <Card className="border-border/50">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm flex items-center gap-1.5 text-muted-foreground">
@@ -425,6 +459,7 @@ export const CTVAddListing = ({ userId, onSuccess }: Props) => {
                 "Mô tả rõ ràng, chi tiết sản phẩm",
                 "Thêm ảnh mô tả để tăng uy tín",
                 "Bảo hành dài hơn = bán nhanh hơn",
+                "Chọn đúng danh mục và loại sản phẩm",
               ].map((tip, i) => (
                 <p key={i} className="text-xs text-muted-foreground flex items-start gap-1.5">
                   <span className="text-primary mt-0.5">•</span> {tip}
