@@ -134,8 +134,8 @@ export const CTVOrders = ({ userId }: Props) => {
                           <p className="font-medium text-foreground">{o.ctv_listings?.title ?? "—"}</p>
                           <p className="text-xs text-muted-foreground font-mono">{o.id.slice(0, 8)}</p>
                         </td>
-                        <td className="text-right text-foreground">{o.price.toLocaleString("vi-VN")}đ</td>
-                        <td className="text-right text-primary font-semibold">{o.ctv_earning.toLocaleString("vi-VN")}đ</td>
+                        <td className="text-right text-foreground">{(o.amount ?? 0).toLocaleString("vi-VN")}đ</td>
+                        <td className="text-right text-primary font-semibold">{(o.commission ?? 0).toLocaleString("vi-VN")}đ</td>
                         <td className="text-center">
                           <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${st.className}`}>{st.label}</span>
                         </td>

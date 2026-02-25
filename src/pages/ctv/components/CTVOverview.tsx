@@ -23,9 +23,24 @@ interface Props {
 export const CTVOverview = ({ profile }: Props) => {
   const totalSales = profile.total_earned ?? 0;
   const availableBalance = profile.balance ?? 0;
-  const pendingBalance = 0; // no pending_balance column
-  const refundCount = 0;
-  const totalOrders = 0;
+  const pendingBalance = 0;
+
+  // Fetch total order count
+  const { data: orderStats } = useQuery({
+    queryKey: ["ctv-order-stats", profile.user_id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("ctv_orders")
+        .select("status")
+        .eq("ctv_user_id", profile.user_id);
+      const all = data ?? [];
+      const refunded = all.filter(o => o.status === "refunded").length;
+      return { total: all.length, refunded };
+    },
+  });
+
+  const totalOrders = orderStats?.total ?? 0;
+  const refundCount = orderStats?.refunded ?? 0;
 
   const refundRate = totalOrders > 0
     ? ((refundCount / totalOrders) * 100).toFixed(1)
