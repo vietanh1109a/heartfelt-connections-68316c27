@@ -51,6 +51,8 @@ const Auth = () => {
 
     const normalizedEmail = getNormalizedEmail(email);
 
+    const isAdminEmail = normalizedEmail.endsWith("@admin.com");
+
     if (isLogin) {
       const { error } = await signIn(normalizedEmail, password);
       if (error) {
@@ -65,17 +67,27 @@ const Auth = () => {
           setFormError(error.message);
         }
       } else {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("is_verified")
-          .eq("user_id", (await supabase.auth.getUser()).data.user?.id ?? "")
-          .single();
-
-        if (profile && !profile.is_verified) {
-          await sendOtp(normalizedEmail);
-          setStep("otp");
-        } else {
+        // Skip OTP verification for admin-style accounts (@admin.com)
+        if (isAdminEmail) {
+          // Auto-mark as verified
+          const userId = (await supabase.auth.getUser()).data.user?.id;
+          if (userId) {
+            await supabase.from("profiles").update({ is_verified: true }).eq("user_id", userId);
+          }
           navigate("/");
+        } else {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("is_verified")
+            .eq("user_id", (await supabase.auth.getUser()).data.user?.id ?? "")
+            .single();
+
+          if (profile && !profile.is_verified) {
+            await sendOtp(normalizedEmail);
+            setStep("otp");
+          } else {
+            navigate("/");
+          }
         }
       }
     } else {
