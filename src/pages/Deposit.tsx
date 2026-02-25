@@ -99,14 +99,14 @@ const Deposit = () => {
       const token = authSession?.access_token;
       if (!token) throw new Error("Not authenticated");
 
-      const projectId = import.meta.env.VITE_SUPABASE_URL?.split("//")[1]?.split(".")[0];
-      const url = `https://${projectId}.supabase.co/functions/v1/create-deposit`;
+      const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-deposit`;
 
       const res = await fetch(url, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
+          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
         },
         body: JSON.stringify({ amount: finalAmount }),
       });

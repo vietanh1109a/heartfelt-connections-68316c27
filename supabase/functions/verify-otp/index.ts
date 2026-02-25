@@ -174,8 +174,8 @@ Deno.serve(async (req) => {
               await supabaseAdmin.from("transactions").insert({
                 user_id: referrerId,
                 amount: 0,
-                type: "deposit",
-                memo: `🎉 Thưởng giới thiệu thành viên mới +${REFERRAL_BONUS_VIEWS} lượt xem (${email})`,
+                type: "bonus",
+                description: `🎉 Thưởng giới thiệu thành viên mới +${REFERRAL_BONUS_VIEWS} lượt xem (${email})`,
               });
 
               // Cộng thêm lượt xem cho NGƯỜI MỚI (+5 lượt, tổng 15)
@@ -187,8 +187,8 @@ Deno.serve(async (req) => {
               await supabaseAdmin.from("transactions").insert({
                 user_id: userId,
                 amount: 0,
-                type: "deposit",
-                memo: `🎉 Được mời bởi ${referralEmail} +${REFERRAL_BONUS_VIEWS} lượt xem`,
+                type: "bonus",
+                description: `🎉 Được mời bởi ${referralEmail} +${REFERRAL_BONUS_VIEWS} lượt xem`,
               });
 
               await supabaseAdmin.from("referral_logs").insert({

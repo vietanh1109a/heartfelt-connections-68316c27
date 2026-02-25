@@ -35,18 +35,17 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Validate JWT
+    // Validate user via getUser
     const userClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, {
       global: { headers: { Authorization: authHeader } },
     });
-    const token = authHeader.replace("Bearer ", "");
-    const { data: claimsData, error: claimsErr } = await userClient.auth.getClaims(token);
-    if (claimsErr || !claimsData?.claims) {
+    const { data: { user }, error: userErr } = await userClient.auth.getUser();
+    if (userErr || !user) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    const userId = claimsData.claims.sub;
+    const userId = user.id;
 
     const { amount, memo } = await req.json();
     if (!amount || amount <= 0) throw new Error("Invalid amount");
@@ -110,8 +109,8 @@ Deno.serve(async (req) => {
     await admin.from("transactions").insert({
       user_id: userId,
       amount,
-      type: "usage",
-      memo: memo || "Sử dụng dịch vụ",
+      type: "purchase",
+      description: memo || "Sử dụng dịch vụ",
     });
 
     return new Response(JSON.stringify({ success: true, new_balance: newPermanentBalance + newBonusBalance }), {

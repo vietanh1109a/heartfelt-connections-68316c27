@@ -168,10 +168,9 @@ export const DepositModal = ({ open, onClose }: Props) => {
       const { data: { session: authSession } } = await supabase.auth.getSession();
       const token = authSession?.access_token;
       if (!token) throw new Error("Not authenticated");
-      const projectId = import.meta.env.VITE_SUPABASE_URL?.split("//")[1]?.split(".")[0];
-      const res = await fetch(`https://${projectId}.supabase.co/functions/v1/create-deposit`, {
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-deposit`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}`, apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY },
         body: JSON.stringify({ amount: finalAmount }),
       });
       if (!res.ok) { const err = await res.json(); throw new Error(err.error ?? "Lỗi tạo mã nạp"); }
