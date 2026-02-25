@@ -75,12 +75,12 @@ const WatchSection = memo(({
       // Fetch cookies via edge function (bypasses RLS on cookie_stock)
       const { data: sessionData } = await supabase.auth.getSession();
       const accessToken = sessionData?.session?.access_token;
-      const res = await fetch("https://ckamflsosjzkyukajxzu.supabase.co/functions/v1/assign-cookie", {
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/assign-cookie`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${accessToken}`,
-          "apikey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNrYW1mbHNvc2p6a3l1a2FqeHp1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0NzMyOTYsImV4cCI6MjA4NzA0OTI5Nn0.G32dB8s_G2xAWohnqegON4cfQT2tswgM9RGFt5tmud0",
+          "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
         },
         body: JSON.stringify({}),
       });
