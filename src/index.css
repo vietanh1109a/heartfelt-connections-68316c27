@@ -47,7 +47,7 @@
   }
 
   .light {
-    --background: 0 0% 97%;
+    --background: 230 20% 97%;
     --foreground: 220 14% 10%;
 
     --card: 0 0% 100%;
@@ -56,33 +56,33 @@
     --popover: 0 0% 100%;
     --popover-foreground: 220 14% 10%;
 
-    --primary: 0 72% 51%;
+    --primary: 0 65% 45%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 220 10% 93%;
+    --secondary: 230 15% 93%;
     --secondary-foreground: 220 14% 10%;
 
-    --muted: 220 10% 93%;
+    --muted: 230 15% 93%;
     --muted-foreground: 220 10% 40%;
 
-    --accent: 220 10% 90%;
+    --accent: 230 15% 94%;
     --accent-foreground: 220 14% 10%;
 
-    --destructive: 0 84% 60%;
+    --destructive: 0 70% 50%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 220 10% 88%;
-    --input: 220 10% 88%;
-    --ring: 0 72% 51%;
+    --border: 220 10% 90%;
+    --input: 220 10% 90%;
+    --ring: 0 65% 45%;
 
-    --sidebar-background: 0 0% 98%;
+    --sidebar-background: 0 0% 100%;
     --sidebar-foreground: 220 14% 10%;
-    --sidebar-primary: 0 72% 51%;
+    --sidebar-primary: 0 65% 45%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 220 10% 93%;
+    --sidebar-accent: 0 60% 45% / 0.08;
     --sidebar-accent-foreground: 220 14% 10%;
-    --sidebar-border: 220 10% 88%;
-    --sidebar-ring: 0 72% 51%;
+    --sidebar-border: 220 10% 90%;
+    --sidebar-ring: 0 65% 45%;
   }
 
   .dark {
@@ -143,6 +143,10 @@
     @apply rounded-xl border border-border/50 bg-card;
     box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.12), 0 1px 2px -1px rgb(0 0 0 / 0.12);
   }
+  .light .dash-card {
+    box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.06), 0 4px 12px 0 rgb(0 0 0 / 0.04);
+    border-color: hsl(220 10% 90%);
+  }
   .dash-card-hover {
     @apply transition-all duration-200 ease-out;
   }
@@ -150,6 +154,9 @@
     border-color: hsl(var(--border) / 0.8);
     box-shadow: 0 4px 12px 0 rgb(0 0 0 / 0.15), 0 2px 4px -1px rgb(0 0 0 / 0.1);
     transform: translateY(-1px);
+  }
+  .light .dash-card-hover:hover {
+    box-shadow: 0 8px 24px 0 rgb(0 0 0 / 0.08), 0 2px 8px -1px rgb(0 0 0 / 0.06);
   }
   .dash-glow-btn {
     @apply transition-all duration-200;
