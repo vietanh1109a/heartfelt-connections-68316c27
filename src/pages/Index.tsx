@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
@@ -125,111 +125,11 @@ const Index = () => {
   const [tvLoading, setTvLoading] = useState(false);
   const [showTvConfirm, setShowTvConfirm] = useState(false);
 
-  // Watch loading (used in WatchModal inline)
-  const [watchLoading, setWatchLoading] = useState(false);
+  // Watch loading — delegated to WatchSection via ref
+  const watchSectionRef = useRef<{ handleWatch: () => Promise<void> } | null>(null);
   const [activeTab, setActiveTab] = useState<"netflix" | "products" | "game_keys">("netflix");
 
   const { trySendCookie, checkExtensionAlive } = useCookieActions(user, extensionVersion, setExtensionVersion);
-
-  const handleWatch = async () => {
-    if (!user) { navigate("/auth"); return; }
-    if (!profile) return;
-
-    const freeViews = (profile as any).free_views_left ?? 0;
-    const vipViews = (profile as any).vip_views_left ?? 0;
-    const hasViews = freeViews > 0 || vipViews > 0;
-    const effectiveBalance = (profile as any)?.effective_balance ?? ((profile?.balance ?? 0) + (profile?.bonus_balance ?? 0));
-
-    if (!hasViews && effectiveBalance < 500) {
-      toast.error("Hết lượt xem và số dư không đủ. Cần ít nhất 500đ hoặc mua thêm lượt xem.");
-      return;
-    }
-    if (extensionOutdated) {
-      toast.error(`Extension phiên bản ${extensionVersion} đã cũ. Vui lòng cập nhật lên v${MIN_EXTENSION_VERSION}+`);
-      setShowExtensionModal(true);
-      return;
-    }
-    setWatchLoading(true);
-    try {
-      const detectedVersion = await checkExtensionAlive();
-      if (!detectedVersion) {
-        setShowExtensionModal(true);
-        toast.error("Extension chưa được cài đặt hoặc không phản hồi. Không trừ tiền.");
-        return;
-      }
-      if (compareVersions(detectedVersion, MIN_EXTENSION_VERSION) < 0) {
-        toast.error(`Extension phiên bản ${detectedVersion} đã cũ. Vui lòng cập nhật lên v${MIN_EXTENSION_VERSION}+`);
-        setShowExtensionModal(true);
-        return;
-      }
-
-      // Fetch cookies via edge function
-      const { data: assignResult, error: assignError } = await supabase.functions.invoke("assign-cookie", {
-        body: {},
-      });
-      
-      if (assignError) {
-        toast.error("Không thể lấy tài khoản. Vui lòng liên hệ hỗ trợ.");
-        return;
-      }
-      
-      if (assignResult?.error) {
-        toast.error(assignResult.error || "Không thể lấy tài khoản. Vui lòng liên hệ hỗ trợ.");
-        return;
-      }
-      
-      const activeCookies = (assignResult.assignments || [])
-        .filter((a: any) => a.is_active && a.cookie_data)
-        .map((a: any) => ({ cookie_data: a.cookie_data }));
-      
-      if (activeCookies.length === 0) {
-        toast.error("Kho tài khoản đã hết. Vui lòng liên hệ hỗ trợ.");
-        return;
-      }
-      queryClient.invalidateQueries({ queryKey: ["cookie-assignments"] });
-
-      let extensionResponded = false;
-      for (const cookie of activeCookies) {
-        extensionResponded = await trySendCookie(cookie.cookie_data);
-        if (extensionResponded) break;
-      }
-
-      if (!extensionResponded) {
-        setShowExtensionModal(true);
-        toast.error("Extension chưa được cài đặt hoặc không phản hồi. Không trừ tiền.");
-        return;
-      }
-
-      // Deduct: views first → then balance
-      if (hasViews) {
-        const useVip = vipViews > 0;
-        const updateField = useVip ? "vip_views_left" : "free_views_left";
-        const currentVal = useVip ? vipViews : freeViews;
-        const { error: viewErr } = await supabase
-          .from("profiles")
-          .update({ [updateField]: currentVal - 1 })
-          .eq("user_id", user.id);
-        if (viewErr) {
-          toast.error("Lỗi trừ lượt xem. Vui lòng thử lại.");
-          return;
-        }
-        const viewType = useVip ? "VIP" : "miễn phí";
-        toast.success(`✅ Netflix đã được mở! Trừ 1 lượt xem ${viewType}. Còn lại: ${currentVal - 1} lượt.`);
-      } else {
-        const { data: deductData, error: deductError } = await supabase.functions.invoke("deduct-balance", {
-          body: { amount: 500, memo: "Xem phim Netflix" },
-        });
-        if (deductError || deductData?.error) {
-          toast.error(deductData?.error || "Lỗi khi trừ tiền. Vui lòng thử lại.");
-          return;
-        }
-        toast.success("✅ Netflix đã được mở! Trừ 500đ. Chúc bạn xem phim vui vẻ!");
-      }
-      queryClient.invalidateQueries({ queryKey: ["profile"] });
-    } finally {
-      setWatchLoading(false);
-    }
-  };
 
   const handleActivateTv = async () => {
     if (!user) { navigate("/auth"); return; }
@@ -408,6 +308,7 @@ const Index = () => {
                       tvCode={tvCode}
                       setTvCode={setTvCode}
                       onShowTvConfirm={() => setShowTvConfirm(true)}
+                      onRegisterHandleWatch={(fn) => { watchSectionRef.current = { handleWatch: fn }; }}
                     />
                   </div>
                   <div className="lg:col-span-2">
@@ -481,8 +382,15 @@ const Index = () => {
         maxSwitches={maxSwitches}
       />
 
-      {/* Watch modal — kept here to avoid navigate prop drilling */}
-      {showWatchModal && (
+      {/* Watch modal */}
+      {showWatchModal && (() => {
+        const freeV = (profile as any)?.free_views_left ?? 0;
+        const vipV = (profile as any)?.vip_views_left ?? 0;
+        const hasV = freeV > 0 || vipV > 0;
+        const bal = (profile?.balance ?? 0) + (profile?.bonus_balance ?? 0);
+        const canWatch = hasV || bal >= 500;
+        const doWatch = () => { setShowWatchModal(false); watchSectionRef.current?.handleWatch(); };
+        return (
         <div
           className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm px-4"
           onClick={(e) => { if (e.target === e.currentTarget) setShowWatchModal(false); }}
@@ -493,27 +401,27 @@ const Index = () => {
             transition={{ duration: 0.25 }}
             className="w-full max-w-2xl"
           >
-            <h2 className="text-center text-2xl font-bold text-foreground mb-6">Chọn gói xem phim</h2>
+            <h2 className="text-center text-2xl font-bold text-foreground mb-6">{t("Chọn gói xem phim", "Choose a plan")}</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* FREE */}
               <div className="relative rounded-2xl border border-border/40 bg-card/90 p-6 flex flex-col">
                 <div className="absolute -top-3 left-5">
                   <span className="bg-secondary text-muted-foreground text-xs font-semibold px-3 py-1 rounded-full border border-border/40">
-                    {isVip ? "Gói thường" : "Gói hiện tại"}
+                    {isVip ? t("Gói thường", "Standard") : t("Gói hiện tại", "Current plan")}
                   </span>
                 </div>
                 <h3 className="text-xl font-bold text-foreground mt-2">Free</h3>
-                <p className="text-muted-foreground text-xs mb-4">Xem quảng cáo ngắn trước mỗi phiên</p>
+                <p className="text-muted-foreground text-xs mb-4">{t("Xem quảng cáo ngắn trước mỗi phiên", "Short ad before each session")}</p>
                 <div className="mb-1">
                   <span className="text-3xl font-extrabold text-green-400">500đ</span>
-                  <span className="text-muted-foreground text-sm">/lượt xem</span>
+                  <span className="text-muted-foreground text-sm">/{t("lượt xem", "view")}</span>
                 </div>
                 <div className="mb-6 mt-4 space-y-3 flex-1">
                   {[
-                    "Hệ thống tự động cấp riêng cho bạn 1 tài khoản Netflix cố định ngay khi tạo tài khoản.",
-                    "Ưu tiên trừ lượt xem miễn phí, hết lượt mới trừ 500đ/lượt.",
-                    "2 lượt đổi tài khoản mỗi tháng.",
-                    "Xem kèm quảng cáo: Cần xem một đoạn quảng cáo ngắn để hỗ trợ duy trì máy chủ trước mỗi phiên.",
+                    t("Hệ thống tự động cấp riêng cho bạn 1 tài khoản Netflix cố định ngay khi tạo tài khoản.", "You get a dedicated Netflix account automatically upon signup."),
+                    t("Ưu tiên trừ lượt xem miễn phí, hết lượt mới trừ 500đ/lượt.", "Free views used first, then 500đ/view."),
+                    t("2 lượt đổi tài khoản mỗi tháng.", "2 account switches per month."),
+                    t("Xem kèm quảng cáo: Cần xem một đoạn quảng cáo ngắn để hỗ trợ duy trì máy chủ trước mỗi phiên.", "Short ad before each session to support server costs."),
                   ].map((f) => (
                     <div key={f} className="flex items-start gap-2 text-sm text-muted-foreground">
                       <CheckCircle2 className="h-4 w-4 text-green-400 shrink-0 mt-0.5" />
@@ -521,30 +429,19 @@ const Index = () => {
                     </div>
                   ))}
                 </div>
-                {(() => {
-                  const freeV = (profile as any)?.free_views_left ?? 0;
-                  const vipV = (profile as any)?.vip_views_left ?? 0;
-                  const hasV = freeV > 0 || vipV > 0;
-                  const bal = (profile?.balance ?? 0) + (profile?.bonus_balance ?? 0);
-                  const canWatch = hasV || bal >= 500;
-                  return (
-                    <>
-                      <button
-                        onClick={() => { setShowWatchModal(false); handleWatch(); }}
-                        disabled={watchLoading || !canWatch}
-                        className="w-full rounded-xl py-3 font-bold text-sm text-white transition-all hover:opacity-90 active:scale-[0.97] disabled:opacity-50"
-                        style={{ background: "linear-gradient(135deg, #E50914, #B20710)" }}
-                      >
-                        {hasV ? `Bắt đầu xem (còn ${freeV + vipV} lượt)` : bal >= 500 ? "Bắt đầu xem — 500đ" : "Hết lượt xem & số dư không đủ"}
-                      </button>
-                      {!canWatch && (
-                        <button onClick={() => { setShowWatchModal(false); setShowDeposit(true); }} className="mt-2 w-full text-xs text-primary hover:underline">
-                          Nạp thêm
-                        </button>
-                      )}
-                    </>
-                  );
-                })()}
+                <button
+                  onClick={doWatch}
+                  disabled={!canWatch}
+                  className="w-full rounded-xl py-3 font-bold text-sm text-primary-foreground transition-all hover:opacity-90 active:scale-[0.97] disabled:opacity-50"
+                  style={{ background: "linear-gradient(135deg, #E50914, #B20710)" }}
+                >
+                  {hasV ? t(`Bắt đầu xem (còn ${freeV + vipV} lượt)`, `Start watching (${freeV + vipV} views left)`) : bal >= 500 ? t("Bắt đầu xem — 500đ", "Start watching — 500đ") : t("Hết lượt xem & số dư không đủ", "No views & insufficient balance")}
+                </button>
+                {!canWatch && (
+                  <button onClick={() => { setShowWatchModal(false); setShowDeposit(true); }} className="mt-2 w-full text-xs text-primary hover:underline">
+                    {t("Nạp thêm", "Deposit")}
+                  </button>
+                )}
               </div>
 
               {/* VIP */}
@@ -557,27 +454,27 @@ const Index = () => {
                 <h3 className="text-xl font-bold text-foreground mt-2 flex items-center gap-2">
                   VIP <Crown className="h-5 w-5 text-yellow-400" />
                 </h3>
-                <p className="text-yellow-400/80 text-xs mb-4">Không quảng cáo, ưu tiên hỗ trợ</p>
+                <p className="text-yellow-400/80 text-xs mb-4">{t("Không quảng cáo, ưu tiên hỗ trợ", "No ads, priority support")}</p>
                 {isVip ? (
                   <>
                     <div className="mb-1">
                       <span className="text-3xl font-extrabold text-yellow-400">500đ</span>
-                      <span className="text-muted-foreground text-sm">/lượt xem</span>
+                      <span className="text-muted-foreground text-sm">/{t("lượt xem", "view")}</span>
                     </div>
-                    <div className="text-xs text-yellow-400/70 mb-4">Ưu đãi VIP đang hoạt động!</div>
+                    <div className="text-xs text-yellow-400/70 mb-4">{t("Ưu đãi VIP đang hoạt động!", "VIP benefits active!")}</div>
                   </>
                 ) : (
                   <div className="mb-4">
                     <span className="text-3xl font-extrabold text-yellow-400">{(vipPlans?.[0]?.price ?? 50000).toLocaleString("vi-VN")}đ</span>
-                    <span className="text-muted-foreground text-sm">/{vipPlans?.[0] ? Math.round(vipPlans[0].duration_days / 30) + " tháng" : "tháng"}</span>
+                    <span className="text-muted-foreground text-sm">/{vipPlans?.[0] ? Math.round(vipPlans[0].duration_days / 30) + ` ${t("tháng", "mo")}` : t("tháng", "mo")}</span>
                   </div>
                 )}
                 <div className="mb-6 space-y-3 flex-1">
                   {[
-                    "Sở hữu 1 tài khoản Premium chất lượng cao nhất.",
-                    "Ưu tiên đường truyền: Tốc độ cực nhanh, không phải chờ đợi dù trong giờ cao điểm.",
-                    "Hỗ trợ 10 lượt đổi tài khoản mỗi tháng.",
-                    "Trải nghiệm không gián đoạn: Hoàn toàn sạch bóng quảng cáo.",
+                    t("Sở hữu 1 tài khoản Premium chất lượng cao nhất.", "Get a top-quality Premium account."),
+                    t("Ưu tiên đường truyền: Tốc độ cực nhanh, không phải chờ đợi dù trong giờ cao điểm.", "Priority bandwidth: Ultra-fast, no waiting even during peak hours."),
+                    t("Hỗ trợ 10 lượt đổi tài khoản mỗi tháng.", "10 account switches per month."),
+                    t("Trải nghiệm không gián đoạn: Hoàn toàn sạch bóng quảng cáo.", "Uninterrupted experience: Completely ad-free."),
                   ].map((f) => (
                     <div key={f} className="flex items-start gap-2 text-sm text-muted-foreground">
                       <CheckCircle2 className="h-4 w-4 text-yellow-400 shrink-0 mt-0.5" />
@@ -586,41 +483,33 @@ const Index = () => {
                   ))}
                 </div>
                 {isVip ? (
-                  (() => {
-                    const freeV = (profile as any)?.free_views_left ?? 0;
-                    const vipV = (profile as any)?.vip_views_left ?? 0;
-                    const hasV = freeV > 0 || vipV > 0;
-                    const bal = (profile?.balance ?? 0) + (profile?.bonus_balance ?? 0);
-                    const canWatch = hasV || bal >= 500;
-                    return (
-                      <button
-                        onClick={() => { setShowWatchModal(false); handleWatch(); }}
-                        disabled={watchLoading || !canWatch}
-                        className="w-full rounded-xl py-3 font-bold text-sm text-black transition-all hover:opacity-90 active:scale-[0.97] disabled:opacity-50 bg-yellow-400 hover:bg-yellow-300"
-                      >
-                        {hasV ? `Xem ngay — VIP 👑 (còn ${vipV + freeV} lượt)` : bal >= 500 ? "Xem ngay — VIP 👑 (500đ)" : "Hết lượt xem & số dư không đủ"}
-                      </button>
-                    );
-                  })()
+                  <button
+                    onClick={doWatch}
+                    disabled={!canWatch}
+                    className="w-full rounded-xl py-3 font-bold text-sm text-black transition-all hover:opacity-90 active:scale-[0.97] disabled:opacity-50 bg-yellow-400 hover:bg-yellow-300"
+                  >
+                    {hasV ? t(`Xem ngay — VIP 👑 (còn ${vipV + freeV} lượt)`, `Watch now — VIP 👑 (${vipV + freeV} views left)`) : bal >= 500 ? t("Xem ngay — VIP 👑 (500đ)", "Watch now — VIP 👑 (500đ)") : t("Hết lượt xem & số dư không đủ", "No views & insufficient balance")}
+                  </button>
                 ) : (
                   <button
                     onClick={() => { setShowWatchModal(false); setShowVipPlans(true); }}
                     className="w-full rounded-xl py-3 font-bold text-sm text-black bg-yellow-400 hover:bg-yellow-300 transition-all active:scale-[0.97]"
                   >
                     <Crown className="h-4 w-4 inline mr-1.5" />
-                    Nâng cấp VIP ngay
+                    {t("Nâng cấp VIP ngay", "Upgrade to VIP now")}
                   </button>
                 )}
               </div>
             </div>
             <div className="text-center mt-5">
               <button onClick={() => setShowWatchModal(false)} className="bg-secondary/80 text-foreground text-sm font-medium px-8 py-2.5 rounded-xl hover:bg-secondary transition-colors">
-                Đóng
+                {t("Đóng", "Close")}
               </button>
             </div>
           </motion.div>
         </div>
-      )}
+        );
+      })()}
     </>
   );
 };

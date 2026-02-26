@@ -1,4 +1,4 @@
-import { memo, useState } from "react";
+import { memo, useState, useEffect } from "react";
 import { Play, Headphones, ShoppingBag } from "lucide-react";
 import PlanSelector from "./PlanSelector";
 import { toast } from "sonner";
@@ -26,19 +26,25 @@ interface Props {
   tvCode: string;
   setTvCode: (v: string) => void;
   onShowTvConfirm: () => void;
+  onRegisterHandleWatch?: (fn: () => Promise<void>) => void;
 }
 
 const WatchSection = memo(({
   user, profile, isVip, maxSwitches: _maxSwitches, switchesLeft: _switchesLeft,
   extensionVersion, setExtensionVersion, extensionOutdated,
   onShowExtensionModal, onShowWatchModal, onShowReportDialog: _onShowReportDialog,
-  tvCode, setTvCode, onShowTvConfirm,
+  tvCode, setTvCode, onShowTvConfirm, onRegisterHandleWatch,
 }: Props) => {
   const [watchLoading, setWatchLoading] = useState(false);
   const queryClient = useQueryClient();
   const { trySendCookie, checkExtensionAlive } = useCookieActions(user, extensionVersion, setExtensionVersion);
   const { linkSupport } = useAppSettings();
   const { t } = useLanguage();
+
+  // Register handleWatch for parent to call
+  useEffect(() => {
+    onRegisterHandleWatch?.(handleWatch);
+  });
 
   const handleWatch = async () => {
     if (!user || !profile) return;

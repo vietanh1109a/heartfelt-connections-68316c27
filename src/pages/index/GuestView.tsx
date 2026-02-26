@@ -2,21 +2,23 @@ import { memo } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Play, Crown, CheckCircle2, ShoppingBag, Tv2, LogIn, UserPlus, Zap, Shield, Clock } from "lucide-react";
-
-const features = [
-  { icon: <Tv2 className="h-5 w-5 text-primary" />, title: "Xem trên mọi thiết bị", desc: "PC, TV, điện thoại — xem Netflix mọi lúc mọi nơi." },
-  { icon: <Zap className="h-5 w-5 text-yellow-400" />, title: "Kích hoạt tức thì", desc: "Chỉ 500đ/lượt, không cần đăng ký gói dài hạn." },
-  { icon: <Shield className="h-5 w-5 text-green-400" />, title: "Tài khoản riêng tư", desc: "Tài khoản Netflix Premium được cấp riêng cho bạn." },
-  { icon: <Clock className="h-5 w-5 text-blue-400" />, title: "Người mới 10 lượt miễn phí", desc: "Đăng ký ngay để nhận 10 lượt xem miễn phí." },
-];
-
-const plans = [
-  { name: "Free", price: "500đ", per: "/lượt xem", color: "border-border/40 bg-card/60", badge: null, features: ["2 tài khoản Netflix cố định", "1 lượt đổi/tháng", "Xem kèm quảng cáo ngắn", "10 lượt xem miễn phí cho người mới"] },
-  { name: "VIP", price: "từ 50,000đ", per: "/tháng", color: "border-yellow-500/50 bg-gradient-to-br from-yellow-500/10 to-card/60", badge: "HOT", features: ["5 tài khoản Premium riêng", "Không quảng cáo", "Ưu tiên tốc độ cao", "2 lượt đổi tài khoản/tháng"] },
-];
+import { useLanguage } from "@/lib/language";
 
 const GuestView = memo(() => {
   const navigate = useNavigate();
+  const { t } = useLanguage();
+
+  const features = [
+    { icon: <Tv2 className="h-5 w-5 text-primary" />, title: t("Xem trên mọi thiết bị", "Watch on any device"), desc: t("PC, TV, điện thoại — xem Netflix mọi lúc mọi nơi.", "PC, TV, phone — watch Netflix anytime, anywhere.") },
+    { icon: <Zap className="h-5 w-5 text-yellow-400" />, title: t("Kích hoạt tức thì", "Instant activation"), desc: t("Chỉ 500đ/lượt, không cần đăng ký gói dài hạn.", "Only 500đ/view, no long-term subscription needed.") },
+    { icon: <Shield className="h-5 w-5 text-green-400" />, title: t("Tài khoản riêng tư", "Private account"), desc: t("Tài khoản Netflix Premium được cấp riêng cho bạn.", "A dedicated Netflix Premium account just for you.") },
+    { icon: <Clock className="h-5 w-5 text-blue-400" />, title: t("Người mới 10 lượt miễn phí", "10 free views for new users"), desc: t("Đăng ký ngay để nhận 10 lượt xem miễn phí.", "Sign up now to get 10 free views.") },
+  ];
+
+  const plans = [
+    { name: "Free", price: "500đ", per: t("/lượt xem", "/view"), color: "border-border/40 bg-card/60", badge: null, features: [t("2 tài khoản Netflix cố định", "2 dedicated Netflix accounts"), t("1 lượt đổi/tháng", "1 switch/month"), t("Xem kèm quảng cáo ngắn", "Short ad before viewing"), t("10 lượt xem miễn phí cho người mới", "10 free views for new users")] },
+    { name: "VIP", price: t("từ 50,000đ", "from 50,000đ"), per: t("/tháng", "/month"), color: "border-yellow-500/50 bg-gradient-to-br from-yellow-500/10 to-card/60", badge: "HOT", features: [t("5 tài khoản Premium riêng", "5 dedicated Premium accounts"), t("Không quảng cáo", "No ads"), t("Ưu tiên tốc độ cao", "Priority high-speed access"), t("2 lượt đổi tài khoản/tháng", "2 account switches/month")] },
+  ];
 
   return (
     <div className="min-h-screen bg-background relative overflow-x-hidden">
@@ -42,7 +44,7 @@ const GuestView = memo(() => {
               className="flex items-center gap-1.5 px-4 py-2 rounded-lg border border-border/50 text-sm font-medium text-foreground hover:bg-secondary/60 transition-colors"
             >
               <LogIn className="h-4 w-4" />
-              Đăng nhập
+              {t("Đăng nhập", "Sign In")}
             </button>
             <button
               onClick={() => navigate("/auth")}
@@ -50,7 +52,7 @@ const GuestView = memo(() => {
               style={{ background: "linear-gradient(135deg, #E50914, #B20710)" }}
             >
               <UserPlus className="h-4 w-4" />
-              Đăng ký miễn phí
+              {t("Đăng ký miễn phí", "Sign Up Free")}
             </button>
           </div>
         </div>
@@ -65,14 +67,14 @@ const GuestView = memo(() => {
             transition={{ duration: 0.5 }}
           >
             <div className="inline-flex items-center gap-2 bg-primary/10 border border-primary/20 rounded-full px-4 py-1.5 mb-6">
-              <span className="text-primary text-xs font-bold">🎬 Xem Netflix Premium</span>
+              <span className="text-primary text-xs font-bold">{t("🎬 Xem Netflix Premium", "🎬 Watch Netflix Premium")}</span>
             </div>
             <h1 className="text-4xl md:text-5xl font-black text-foreground leading-tight mb-4">
-              Xem Netflix<br />
-              <span className="text-primary">chỉ từ 500đ</span> mỗi lượt
+              {t("Xem Netflix", "Watch Netflix")}<br />
+              <span className="text-primary">{t("chỉ từ 500đ", "from only 500đ")}</span> {t("mỗi lượt", "per view")}
             </h1>
             <p className="text-muted-foreground text-lg max-w-xl mx-auto mb-8">
-              Tài khoản Netflix Premium được cấp riêng. Không cần đăng ký dài hạn, không chia sẻ mật khẩu.
+              {t("Tài khoản Netflix Premium được cấp riêng. Không cần đăng ký dài hạn, không chia sẻ mật khẩu.", "Dedicated Netflix Premium account. No long-term subscription, no password sharing.")}
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
               <button
@@ -81,14 +83,14 @@ const GuestView = memo(() => {
                 style={{ background: "linear-gradient(135deg, #E50914, #B20710)" }}
               >
                 <UserPlus className="h-5 w-5" />
-                Bắt đầu miễn phí — 10 lượt xem
+                {t("Bắt đầu miễn phí — 10 lượt xem", "Start free — 10 views")}
               </button>
               <button
                 onClick={() => navigate("/auth")}
                 className="flex items-center gap-2 px-8 py-3.5 rounded-xl font-medium text-sm border border-border/50 text-foreground hover:bg-secondary/60 transition-colors"
               >
                 <LogIn className="h-4 w-4" />
-                Tôi đã có tài khoản
+                {t("Tôi đã có tài khoản", "I already have an account")}
               </button>
             </div>
           </motion.div>
@@ -116,8 +118,8 @@ const GuestView = memo(() => {
         {/* Plans preview */}
         <section className="max-w-5xl mx-auto px-4 pb-14">
           <div className="text-center mb-8">
-            <h2 className="text-2xl font-bold text-foreground">Chọn gói phù hợp</h2>
-            <p className="text-muted-foreground text-sm mt-1">Linh hoạt — chỉ trả khi bạn xem</p>
+            <h2 className="text-2xl font-bold text-foreground">{t("Chọn gói phù hợp", "Choose a plan")}</h2>
+            <p className="text-muted-foreground text-sm mt-1">{t("Linh hoạt — chỉ trả khi bạn xem", "Flexible — only pay when you watch")}</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl mx-auto">
             {plans.map((plan, i) => (
@@ -160,7 +162,7 @@ const GuestView = memo(() => {
                   }`}
                   style={plan.name !== "VIP" ? { background: "linear-gradient(135deg, #E50914, #B20710)" } : {}}
                 >
-                  {plan.name === "VIP" ? "Nâng cấp VIP ngay" : "Đăng ký nhận 10 lượt miễn phí"}
+                  {plan.name === "VIP" ? t("Nâng cấp VIP ngay", "Upgrade to VIP") : t("Đăng ký nhận 10 lượt miễn phí", "Sign up for 10 free views")}
                 </button>
               </motion.div>
             ))}
@@ -171,15 +173,15 @@ const GuestView = memo(() => {
         <section className="max-w-5xl mx-auto px-4 pb-16">
           <div className="border border-border/40 rounded-2xl p-6 bg-card/50 text-center">
             <ShoppingBag className="h-8 w-8 text-primary mx-auto mb-3" />
-            <h3 className="text-lg font-bold text-foreground mb-2">Hoặc mua gói Netflix chính chủ</h3>
+            <h3 className="text-lg font-bold text-foreground mb-2">{t("Hoặc mua gói Netflix chính chủ", "Or buy an official Netflix plan")}</h3>
             <p className="text-muted-foreground text-sm mb-4">
-              Tài khoản Netflix Premium 1–12 tháng với đầy đủ tính năng, nhiều profile riêng tư.
+              {t("Tài khoản Netflix Premium 1–12 tháng với đầy đủ tính năng, nhiều profile riêng tư.", "Netflix Premium account 1–12 months with full features and multiple private profiles.")}
             </p>
             <button
               onClick={() => navigate("/auth")}
               className="px-6 py-2.5 rounded-xl border border-border/50 text-sm font-medium text-foreground hover:bg-secondary/60 transition-colors"
             >
-              Xem các gói →
+              {t("Xem các gói →", "View plans →")}
             </button>
           </div>
         </section>
