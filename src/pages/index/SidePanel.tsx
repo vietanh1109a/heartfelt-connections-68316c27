@@ -75,17 +75,17 @@ const SidePanel = memo(({
 
             {/* Extension status */}
             <div className="border-t border-border/20 pt-4">
-              <p className="text-foreground font-semibold text-sm mb-3">Trạng thái Extension</p>
+              <p className="text-foreground font-semibold text-sm mb-3">{t("Trạng thái Extension", "Extension Status")}</p>
               {extensionVersion ? (
                 <div className="rounded-lg border border-green-500/30 bg-green-500/10 p-3">
-                  <p className="text-green-400 font-medium text-sm">Đã cài Extension ✓</p>
-                  <p className="text-green-400/70 text-xs mt-0.5">Phiên bản v{extensionVersion}</p>
+                  <p className="text-green-400 font-medium text-sm">{t("Đã cài Extension ✓", "Extension Installed ✓")}</p>
+                  <p className="text-green-400/70 text-xs mt-0.5">{t("Phiên bản", "Version")} v{extensionVersion}</p>
                 </div>
               ) : (
                 <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 space-y-2">
-                  <p className="text-destructive font-medium text-sm">Chưa cài Extension</p>
+                  <p className="text-destructive font-medium text-sm">{t("Chưa cài Extension", "Extension Not Installed")}</p>
                   <p className="text-muted-foreground text-xs">
-                    Để sử dụng XEM NETFLIX, cần cài Extension trên Chrome/Edge.
+                    {t("Để sử dụng XEM NETFLIX, cần cài Extension trên Chrome/Edge.", "To use WATCH NETFLIX, install the Extension on Chrome/Edge.")}
                   </p>
                   <div className="flex gap-2 pt-1">
                     <a
@@ -96,7 +96,7 @@ const SidePanel = memo(({
                       style={{ background: "linear-gradient(135deg, #E50914, #B20710)" }}
                     >
                       <ExternalLink className="h-3 w-3" />
-                      Tải Extension
+                      {t("Tải Extension", "Download Extension")}
                     </a>
                     <a
                       href={linkGuideYoutube || "#"}
@@ -105,7 +105,7 @@ const SidePanel = memo(({
                       className="flex-1 flex items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-medium text-foreground border border-border/40 hover:bg-secondary/40 transition-colors"
                     >
                       <Puzzle className="h-3 w-3" />
-                      Xem hướng dẫn
+                      {t("Xem hướng dẫn", "View Guide")}
                     </a>
                   </div>
                 </div>
@@ -154,17 +154,17 @@ const SidePanel = memo(({
                 ))}
                 {bonusActive && bonusBalance > 0 && (
                   <div className="mt-2 px-2 py-1.5 bg-green-500/10 border border-green-500/20 rounded-lg flex justify-between text-xs">
-                    <span className="text-green-400/80">Người mới (hết hạn {expiresDateStr}):</span>
-                    <span className="text-green-400 font-semibold">{freeViews} lượt</span>
+                    <span className="text-green-400/80">{t(`Người mới (hết hạn ${expiresDateStr}):`, `New user (expires ${expiresDateStr}):`)}</span>
+                    <span className="text-green-400 font-semibold">{freeViews} {t("lượt", "views")}</span>
                   </div>
                 )}
                 <div className="mt-3 p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
                   <p className="text-xs text-yellow-400/80 text-center">
-                    🎉 Bạn đang là thành viên <span className="font-bold text-yellow-400">VIP</span>!
+                    🎉 {t("Bạn đang là thành viên", "You are a")} <span className="font-bold text-yellow-400">VIP</span>{t("!", " member!")}
                   </p>
                 </div>
                 <button onClick={onShowVipPlans} className="w-full text-xs text-yellow-500 mt-2 hover:underline flex items-center justify-center gap-1">
-                  <Crown className="h-3 w-3" /> Gia hạn VIP
+                  <Crown className="h-3 w-3" /> {t("Gia hạn VIP", "Renew VIP")}
                 </button>
               </div>
             ) : (
@@ -180,7 +180,7 @@ const SidePanel = memo(({
                 <div className="flex items-center justify-between py-3 border-b border-border/20">
                   <span className="text-sm text-muted-foreground">{t("Hết hạn lượt xem:", "Views expire:")}</span>
                   <span className={`text-sm font-semibold ${isExpired ? "text-destructive" : "text-green-400"}`}>
-                    {isExpired ? `Hết hạn (${expiresDateStr})` : `${daysLeft} ngày (${expiresDateStr})`}
+                    {isExpired ? t(`Hết hạn (${expiresDateStr})`, `Expired (${expiresDateStr})`) : t(`${daysLeft} ngày (${expiresDateStr})`, `${daysLeft} days (${expiresDateStr})`)}
                   </span>
                 </div>
                 <div className="flex items-center justify-between py-3 border-b border-border/20">
@@ -199,13 +199,13 @@ const SidePanel = memo(({
             )}
 
             <button onClick={() => navigate("/history")} className="text-primary text-xs mt-3 hover:underline flex items-center gap-1">
-              Xem lịch sử giao dịch <ExternalLink className="h-3 w-3" />
+              {t("Xem lịch sử giao dịch", "View transaction history")} <ExternalLink className="h-3 w-3" />
             </button>
           </div>
         )}
       </div>
 
-      {/* Quick actions — only show relevant ones */}
+      {/* Quick actions */}
       <div className="space-y-2">
         <button
           onClick={() => isGuest ? navigate("/auth") : onShowDeposit?.()}
@@ -216,7 +216,6 @@ const SidePanel = memo(({
           {t("NẠP THÊM", "DEPOSIT")}
         </button>
 
-        {/* Báo hỏng — ẩn khi guest */}
         {!isGuest && (
           <button
             onClick={onShowReportDialog}
@@ -250,12 +249,12 @@ const SidePanel = memo(({
             className="w-full flex items-center justify-center gap-2 border border-border/40 rounded-xl py-3.5 font-medium text-sm text-primary hover:bg-secondary/40 transition-colors"
           >
             <Headphones className="h-4 w-4" />
-            Contact Support
+            {t("Liên hệ hỗ trợ", "Contact Support")}
           </a>
         )}
       </div>
 
-      {/* Social promo — luôn hiển thị */}
+      {/* Social promo */}
       <div className="border border-primary/30 rounded-xl p-5 bg-gradient-to-br from-primary/10 via-card/60 to-card/40 relative overflow-hidden">
         <div className="absolute -top-8 -right-8 w-24 h-24 rounded-full bg-primary/10 blur-2xl" />
         <div className="relative">
@@ -289,10 +288,10 @@ const SidePanel = memo(({
                     <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
                   )}
                   {social.icon === "instagram" && (
-                    <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 1 0 0 12.324 6.162 6.162 0 0 0 0-12.324zM12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm6.406-11.845a1.44 1.44 0 1 0 0 2.881 1.44 1.44 0 0 0 0-2.881z"/></svg>
+                    <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>
                   )}
                   {social.icon === "threads" && (
-                    <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 192 192"><path d="M141.537 88.988a66.667 66.667 0 0 0-2.518-1.143c-1.482-27.307-16.403-42.94-41.457-43.1h-.34c-14.986 0-27.449 6.396-35.12 18.036l13.779 9.452c5.73-8.695 14.724-10.548 21.348-10.548h.229c8.249.053 14.474 2.452 18.503 7.129 2.932 3.405 4.893 8.111 5.864 14.05-7.314-1.243-15.224-1.626-23.68-1.14-23.82 1.371-39.134 15.24-38.27 34.638.44 9.89 5.014 18.4 12.883 23.972 7.466 5.28 17.087 7.834 27.089 7.199 13.183-.837 23.512-5.776 30.695-14.678 5.452-6.762 8.853-15.396 10.272-26.135 6.155 3.716 10.744 8.612 13.36 14.716 4.439 10.369 4.704 27.404-8.376 40.484-11.465 11.465-25.259 16.426-46.018 16.592-23.016-.184-40.39-7.557-51.627-21.91C37.485 141.903 31.392 122.071 31.2 97.003c.192-25.067 6.285-44.9 18.104-58.957C60.54 23.693 77.914 16.32 100.93 16.136c23.208.192 40.946 7.612 52.724 22.048 5.738 7.03 10.03 15.573 12.837 25.462l14.728-3.91c-3.354-11.835-8.58-22.143-15.65-30.813C151.27 12.14 129.637 3.2 100.985 3 72.142 3.2 50.209 12.237 35.564 29.084 19.67 47.432 11.582 72.626 11.339 97.06c.243 24.434 8.331 49.628 24.225 67.976 14.645 16.847 36.578 25.884 65.231 26.084 24.592-.192 42.44-6.784 57.756-22.101 20.694-20.694 20.003-46.334 13.39-61.769-4.745-11.075-13.728-20.09-25.95-26.06l-.454-.202zM99.424 139.52c-11.095.646-22.606-4.362-23.235-14.465-.467-7.486 5.318-15.836 25.27-16.983 2.213-.127 4.381-.19 6.508-.19 6.254 0 12.113.614 17.395 1.794-1.98 24.608-14.075 29.195-25.938 29.844z"/></svg>
+                    <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12.186 24h-.007c-3.581-.024-6.334-1.205-8.184-3.509C2.35 18.44 1.5 15.586 1.472 12.01v-.017c.03-3.579.879-6.43 2.525-8.482C5.845 1.205 8.6.024 12.18 0h.014c2.746.02 5.043.725 6.826 2.098 1.677 1.29 2.858 3.13 3.509 5.467l-2.04.569c-1.104-3.96-3.898-5.984-8.304-6.015-2.91.022-5.11.936-6.54 2.717C4.307 6.504 3.616 8.914 3.59 12c.025 3.086.718 5.496 2.057 7.164 1.432 1.783 3.631 2.698 6.54 2.717 2.623-.02 4.358-.631 5.8-2.045 1.647-1.613 1.618-3.593 1.09-4.798-.31-.71-.873-1.3-1.634-1.75-.192 1.352-.622 2.446-1.284 3.272-.886 1.102-2.14 1.704-3.73 1.79-1.202.065-2.361-.218-3.259-.801-1.063-.689-1.685-1.74-1.752-2.96-.065-1.187.408-2.26 1.33-3.017.88-.723 2.08-1.12 3.476-1.154 1.04-.025 1.99.112 2.832.41-.07-.485-.19-.943-.369-1.364-.349-.82-.91-1.455-1.62-1.834-.753-.4-1.684-.593-2.768-.573l-.04-2.12c1.508-.028 2.81.266 3.87.874 1.092.627 1.913 1.546 2.442 2.73.436 1.023.656 2.21.66 3.53.002.05.002.1 0 .15v.12c.548.36.967.793 1.252 1.293.63 1.102.833 2.445.622 3.88-.3 2.035-1.246 3.7-2.816 4.948C17.755 23.2 15.242 23.974 12.186 24zm1.638-8.262c-.769.036-1.376.264-1.752.66-.36.38-.535.868-.505 1.41.029.499.293.93.767 1.244.52.344 1.257.525 2.058.487 1.056-.058 1.86-.45 2.395-1.165.356-.476.616-1.088.782-1.83a8.577 8.577 0 00-3.745-.806z"/></svg>
                   )}
                   {social.icon === "tiktok" && (
                     <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.15 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z"/></svg>
